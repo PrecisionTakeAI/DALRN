@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package search;
+
+// Service for vector search operations
+service SearchService {
+    // Build index from embeddings
+    rpc Build(BuildRequest) returns (BuildResponse);
+    
+    // Query k nearest neighbors
+    rpc Query(QueryRequest) returns (QueryResponse);
+    
+    // Get index statistics
+    rpc GetStats(StatsRequest) returns (StatsResponse);
+    
+    // Health check
+    rpc HealthCheck(HealthRequest) returns (HealthResponse);
+}
+
+// Build index request
+message BuildRequest {
+    repeated Vector embeddings = 1;
+    bool append = 2;  // Append to existing index or replace
+}
+
+// Vector message
+message Vector {
+    repeated float values = 1;
+}
+
+// Build response
+message BuildResponse {
+    int32 total_vectors = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+// Query request
+message QueryRequest {
+    Vector query_vector = 1;
+    int32 k = 2;
+    int32 reweight_iters = 3;  // Default 0 (OFF)
+    string query_id = 4;  // For PoDP receipt
+}
+
+// Query response
+message QueryResponse {
+    repeated int32 indices = 1;
+    repeated float scores = 2;
+    float recall_at_10 = 3;
+    double latency_ms = 4;
+    string query_id = 5;
+}
+
+// Stats request
+message StatsRequest {}
+
+// Stats response
+message StatsResponse {
+    int32 total_vectors = 1;
+    int32 dimension = 2;
+    string index_type = 3;
+    int32 m_parameter = 4;
+    int32 ef_search = 5;
+}
+
+// Health request
+message HealthRequest {}
+
+// Health response
+message HealthResponse {
+    bool healthy = 1;
+    string status = 2;
+}

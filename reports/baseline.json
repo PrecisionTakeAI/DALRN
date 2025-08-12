@@ -1,0 +1,23 @@
+{
+  "configuration": {
+    "vector_dimension": 768,
+    "index_type": "HNSW",
+    "m_parameter": 32,
+    "ef_search": 128,
+    "ef_construction": 200,
+    "num_vectors": 10000
+  },
+  "performance": {
+    "recall_at_10": 0.9860000000000001,
+    "latency_p50_ms": 1.2634499980777036,
+    "latency_p95_ms": 1.8248849999508818,
+    "latency_p99_ms": 3.371082000085152,
+    "mean_latency_ms": 1.3326872000725416,
+    "std_latency_ms": 0.39868877232240135
+  },
+  "test_info": {
+    "timestamp": 1754981913.1292036,
+    "num_queries": 1000,
+    "random_seed": 42
+  }
+}
