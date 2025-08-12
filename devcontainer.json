@@ -1,0 +1,43 @@
+{
+  "name": "DALRN Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [8000, 8100, 8300, 8400, 5001, 8080],
+  "portsAttributes": {
+    "8000": { "label": "Gateway (FastAPI)", "onAutoForward": "openBrowser" },
+    "8100": { "label": "Search (FAISS)", "onAutoForward": "silent" },
+    "8300": { "label": "Negotiation", "onAutoForward": "silent" },
+    "8400": { "label": "ε-ledger", "onAutoForward": "silent" },
+    "5001": { "label": "IPFS API", "onAutoForward": "silent" },
+    "8080": { "label": "IPFS Gateway", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/python/current/bin/python",
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "tamasfe.even-better-toml",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  },
+  "containerEnv": {
+    "IPFS_API": "http://127.0.0.1:5001",
+    "GATEWAY_PORT": "8000"
+  },
+  "updateContentCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/postStart.sh"
+}
