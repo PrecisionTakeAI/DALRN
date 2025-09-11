@@ -18,6 +18,7 @@ import uvicorn
 from services.common.podp import Receipt, ReceiptChain
 from services.common.ipfs import put_json, get_json
 from services.chain.client import AnchorClient
+from services.gateway.soan_integration import router as soan_router
 
 # Configure logging with PII redaction
 logging.basicConfig(
@@ -76,6 +77,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include SOAN router
+app.include_router(soan_router, prefix="/api/v1")
 
 # Request/Response Models
 class SubmitDisputeRequest(BaseModel):
@@ -202,12 +206,21 @@ async def health_check():
         ipfs_healthy = True  # Would check IPFS connection
         chain_healthy = True  # Would check chain connection
         
+        # Check SOAN status
+        try:
+            from services.gateway.soan_integration import get_orchestrator
+            orchestrator = await get_orchestrator()
+            soan_healthy = orchestrator is not None
+        except:
+            soan_healthy = False
+        
         return HealthResponse(
             ok=True,
             timestamp=datetime.now(timezone.utc).isoformat(),
             services={
                 "ipfs": "healthy" if ipfs_healthy else "unhealthy",
-                "chain": "healthy" if chain_healthy else "unhealthy"
+                "chain": "healthy" if chain_healthy else "unhealthy",
+                "soan": "healthy" if soan_healthy else "unhealthy"
             }
         )
     except Exception as e:
