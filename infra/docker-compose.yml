@@ -1,7 +1,361 @@
+version: '3.9'
+
 services:
+  # Core Infrastructure Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: dalrn-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dalrn}
+      POSTGRES_USER: ${POSTGRES_USER:-dalrn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dalrn_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - dalrn-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dalrn}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dalrn-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dalrn-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Blockchain Infrastructure
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: dalrn-anvil
+    command: anvil --host 0.0.0.0 --accounts 10 --block-time 1
+    ports:
+      - "8545:8545"
+    networks:
+      - dalrn-internal
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # IPFS Node
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: dalrn-ipfs
+    environment:
+      IPFS_PROFILE: server
+    ports:
+      - "5001:5001"  # API
+      - "8080:8080"  # Gateway
+      - "4001:4001"  # Swarm
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ipfs_staging:/export
+    networks:
+      - dalrn-internal
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # DALRN Services
   gateway:
-    build: ../services/gateway
+    build:
+      context: ../services/gateway
+      dockerfile: Dockerfile
+    container_name: dalrn-gateway
+    environment:
+      PORT: 8000
+      PODP_ENABLED: "true"
+      EPSILON_LEDGER_URL: http://fl:8400
+      SEARCH_SERVICE_URL: http://search:8100
+      FHE_SERVICE_URL: http://fhe:8200
+      NEGOTIATION_SERVICE_URL: http://negotiation:8300
+      AGENTS_SERVICE_URL: http://agents:8500
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      IPFS_API_URL: http://ipfs:5001
+      BLOCKCHAIN_RPC_URL: http://anvil:8545
     ports:
       - "8000:8000"
     volumes:
       - ../services/gateway:/app
+      - gateway_logs:/app/logs
+    networks:
+      - dalrn-internal
+      - dalrn-external
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  search:
+    build:
+      context: ../services/search
+      dockerfile: Dockerfile
+    container_name: dalrn-search
+    environment:
+      PORT: 8100
+      PODP_ENABLED: "true"
+      EPSILON_BUDGET: "0.01"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      FAISS_INDEX_PATH: /app/indexes
+    ports:
+      - "8100:8100"
+    volumes:
+      - ../services/search:/app
+      - search_indexes:/app/indexes
+      - search_logs:/app/logs
+    networks:
+      - dalrn-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  fhe:
+    build:
+      context: ../services/fhe
+      dockerfile: Dockerfile
+    container_name: dalrn-fhe
+    environment:
+      PORT: 8200
+      PODP_ENABLED: "true"
+      EPSILON_BUDGET: "0.05"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      CKKS_KEY_PATH: /app/keys
+    ports:
+      - "8200:8200"
+    volumes:
+      - ../services/fhe:/app
+      - fhe_keys:/app/keys
+      - fhe_logs:/app/logs
+    networks:
+      - dalrn-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  negotiation:
+    build:
+      context: ../services/negotiation
+      dockerfile: Dockerfile
+    container_name: dalrn-negotiation
+    environment:
+      PORT: 8300
+      PODP_ENABLED: "true"
+      EPSILON_BUDGET: "0.02"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      BLOCKCHAIN_RPC_URL: http://anvil:8545
+    ports:
+      - "8300:8300"
+    volumes:
+      - ../services/negotiation:/app
+      - negotiation_logs:/app/logs
+    networks:
+      - dalrn-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8300/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  fl:
+    build:
+      context: ../services/fl
+      dockerfile: Dockerfile
+    container_name: dalrn-fl
+    environment:
+      PORT: 8400
+      PODP_ENABLED: "true"
+      EPSILON_BUDGET: "1.0"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      BLOCKCHAIN_RPC_URL: http://anvil:8545
+      IPFS_API_URL: http://ipfs:5001
+    ports:
+      - "8400:8400"
+    volumes:
+      - ../services/fl:/app
+      - fl_models:/app/models
+      - fl_logs:/app/logs
+    networks:
+      - dalrn-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8400/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  agents:
+    build:
+      context: ../services/agents
+      dockerfile: Dockerfile
+    container_name: dalrn-agents
+    environment:
+      PORT: 8500
+      PODP_ENABLED: "true"
+      EPSILON_BUDGET: "0.1"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dalrn}:${POSTGRES_PASSWORD:-dalrn_secret}@postgres:5432/${POSTGRES_DB:-dalrn}
+      IPFS_API_URL: http://ipfs:5001
+      BLOCKCHAIN_RPC_URL: http://anvil:8545
+    ports:
+      - "8500:8500"
+    volumes:
+      - ../services/agents:/app
+      - agents_logs:/app/logs
+    networks:
+      - dalrn-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dalrn-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - dalrn-internal
+      - dalrn-external
+    depends_on:
+      - gateway
+      - search
+      - fhe
+      - negotiation
+      - fl
+      - agents
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dalrn-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    networks:
+      - dalrn-internal
+      - dalrn-external
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  dalrn-internal:
+    driver: bridge
+    internal: true
+  dalrn-external:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  ipfs_data:
+  ipfs_staging:
+  gateway_logs:
+  search_indexes:
+  search_logs:
+  fhe_keys:
+  fhe_logs:
+  negotiation_logs:
+  fl_models:
+  fl_logs:
+  agents_logs:
+  prometheus_data:
+  grafana_data:

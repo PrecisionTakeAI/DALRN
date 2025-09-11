@@ -1,0 +1,150 @@
+# DALRN Prometheus Configuration with PoDP Metrics
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'dalrn-monitor'
+    environment: 'docker'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations for DALRN services
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Gateway Service with PoDP metrics
+  - job_name: 'gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['gateway:8000']
+        labels:
+          service: 'gateway'
+          podp_enabled: 'true'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'gateway'
+
+  # Search Service with FAISS metrics
+  - job_name: 'search'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['search:8100']
+        labels:
+          service: 'search'
+          podp_enabled: 'true'
+          epsilon_budget: '0.01'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'search'
+
+  # FHE Service with CKKS metrics
+  - job_name: 'fhe'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['fhe:8200']
+        labels:
+          service: 'fhe'
+          podp_enabled: 'true'
+          epsilon_budget: '0.05'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'fhe'
+
+  # Negotiation Service with Nash equilibrium metrics
+  - job_name: 'negotiation'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['negotiation:8300']
+        labels:
+          service: 'negotiation'
+          podp_enabled: 'true'
+          epsilon_budget: '0.02'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'negotiation'
+
+  # FL/Epsilon-Ledger Service metrics
+  - job_name: 'fl'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['fl:8400']
+        labels:
+          service: 'fl'
+          podp_enabled: 'true'
+          epsilon_budget: '1.0'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'fl'
+
+  # Agents/SOAN Service metrics
+  - job_name: 'agents'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['agents:8500']
+        labels:
+          service: 'agents'
+          podp_enabled: 'true'
+          epsilon_budget: '0.1'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'agents'
+
+  # PostgreSQL metrics (requires postgres_exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+        labels:
+          service: 'postgres'
+
+  # Redis metrics (requires redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'redis'
+
+  # IPFS metrics
+  - job_name: 'ipfs'
+    metrics_path: '/debug/metrics/prometheus'
+    static_configs:
+      - targets: ['ipfs:5001']
+        labels:
+          service: 'ipfs'
+
+  # Docker metrics (requires cAdvisor)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          service: 'docker'
+
+# Custom metric rules for PoDP compliance
+metric_relabel_configs:
+  - source_labels: [__name__]
+    regex: 'podp_receipt_.*'
+    target_label: compliance_metric
+    replacement: 'true'
+  
+  - source_labels: [__name__]
+    regex: 'epsilon_budget_.*'
+    target_label: budget_metric
+    replacement: 'true'
