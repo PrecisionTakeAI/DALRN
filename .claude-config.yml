@@ -113,6 +113,20 @@ claude_md:
 
 # Workflow configuration
 workflow:
+  # Trigger configuration for push events
+  triggers:
+    # Run on code changes (in addition to schedule)
+    on_code_change: true
+    
+    # Minimum hours between automated runs (prevents spam)
+    min_hours_between_runs: 4
+    
+    # File change threshold to trigger (percentage)
+    min_change_percentage: 2
+    
+    # Run on merged PRs
+    on_pr_merge: true
+    
   # Whether to create draft PRs for manual review
   create_draft_pr: true
   

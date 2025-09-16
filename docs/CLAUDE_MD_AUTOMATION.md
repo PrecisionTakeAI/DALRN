@@ -7,8 +7,16 @@ This repository includes an automated workflow that maintains the `CLAUDE.md` fi
 ## How It Works
 
 ### Automatic Triggers
-- **Weekly Schedule**: Runs every Sunday at 2 AM UTC
+- **On Code Changes**: Automatically runs when code files are pushed to main/master/develop branches
+- **On PR Merge**: Triggers when pull requests are merged to update documentation
+- **Weekly Schedule**: Runs every Sunday at 2 AM UTC as a safety net
 - **Manual Dispatch**: Can be triggered on-demand via GitHub Actions UI
+
+### Smart Triggering
+- **Frequency Limit**: Won't run more than once every 4 hours to prevent spam
+- **Change Detection**: Only runs if significant code changes are detected
+- **Path Filtering**: Ignores documentation changes to avoid infinite loops
+- **PR Merge Only**: For pull_request events, only runs on successful merge
 
 ### Process Flow
 1. **Change Detection**: Compares codebase fingerprints to identify significant changes
@@ -38,6 +46,12 @@ claude_md:
     # Add your required sections
 
 workflow:
+  triggers:
+    on_code_change: true  # Run when code is pushed
+    min_hours_between_runs: 4  # Prevent runs within 4 hours
+    min_change_percentage: 2  # Require 2% file changes
+    on_pr_merge: true  # Run when PRs are merged
+    
   create_draft_pr: true
   auto_reviewers:
     - "@username"
