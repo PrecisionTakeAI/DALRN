@@ -1,0 +1,577 @@
+name: Weekly CLAUDE.md Maintenance
+
+on:
+  schedule:
+    # Runs every Sunday at 2 AM UTC (minimal disruption, weekend timing)
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      analysis_depth:
+        description: 'Depth of codebase analysis'
+        required: false
+        default: 'comprehensive'
+        type: choice
+        options:
+          - quick        # <1000 files, basic patterns
+          - standard     # <5000 files, common patterns
+          - comprehensive # All files, detailed patterns
+          - exhaustive   # All files, deep analysis with examples
+      focus_areas:
+        description: 'Specific areas to focus on (comma-separated: e.g., security,testing,api)'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: 'Run analysis without creating PR'
+        required: false
+        type: boolean
+        default: false
+      force_update:
+        description: 'Force update even if no significant changes detected'
+        required: false
+        type: boolean
+        default: false
+      notification_channel:
+        description: 'Notification channel for results'
+        required: false
+        type: choice
+        default: 'none'
+        options:
+          - none
+          - slack
+          - email
+          - issue
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: claude-md-maintenance
+  cancel-in-progress: false
+
+jobs:
+  analyze-and-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max
+    env:
+      ANALYSIS_DEPTH: ${{ github.event.inputs.analysis_depth || 'comprehensive' }}
+      FOCUS_AREAS: ${{ github.event.inputs.focus_areas || '' }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+      FORCE_UPDATE: ${{ github.event.inputs.force_update || 'false' }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache analysis artifacts
+        id: cache-analysis
+        uses: actions/cache@v4
+        with:
+          path: |
+            .claude-analysis-cache
+            .codebase-snapshot
+          key: claude-analysis-${{ runner.os }}-${{ hashFiles('**/*.py', '**/*.js', '**/*.ts', '**/*.java', '**/*.go', '**/*.rs') }}
+          restore-keys: |
+            claude-analysis-${{ runner.os }}-
+
+      - name: Detect codebase changes
+        id: detect-changes
+        run: |
+          echo "Detecting significant changes since last analysis..."
+          
+          # Create snapshot directory if it doesn't exist
+          mkdir -p .codebase-snapshot
+          
+          # Generate current codebase fingerprint
+          find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.java" -o -name "*.go" -o -name "*.rs" -o -name "*.yml" -o -name "*.yaml" -o -name "*.json" \) \
+            -not -path "./.git/*" -not -path "./node_modules/*" -not -path "./.claude-analysis-cache/*" \
+            -exec sha256sum {} \; | sort > .codebase-snapshot/current.sha256
+          
+          # Compare with previous snapshot
+          if [ -f .codebase-snapshot/previous.sha256 ]; then
+            if diff -q .codebase-snapshot/previous.sha256 .codebase-snapshot/current.sha256 > /dev/null; then
+              echo "No significant changes detected"
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            else
+              echo "Significant changes detected"
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+              # Calculate change statistics
+              comm -13 <(sort .codebase-snapshot/previous.sha256) <(sort .codebase-snapshot/current.sha256) | wc -l > .codebase-snapshot/files_changed.txt
+            fi
+          else
+            echo "First run - no previous snapshot"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Save current as previous for next run
+          cp .codebase-snapshot/current.sha256 .codebase-snapshot/previous.sha256
+
+      - name: Skip if no changes (unless forced)
+        if: steps.detect-changes.outputs.has_changes == 'false' && env.FORCE_UPDATE == 'false'
+        run: |
+          echo "No significant changes detected and force_update is false. Skipping analysis."
+          echo "skip_reason=no_changes" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Load repository configuration
+        id: load-config
+        run: |
+          echo "Loading repository-specific configuration..."
+          
+          # Check for custom configuration file
+          if [ -f .claude-config.yml ]; then
+            echo "Found .claude-config.yml"
+            echo "config_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "No custom configuration found, using defaults"
+            echo "config_exists=false" >> $GITHUB_OUTPUT
+            
+            # Create default configuration
+            cat > .claude-config-default.yml << 'EOF'
+          analysis:
+            exclude_patterns:
+              - "*.min.js"
+              - "*.min.css"
+              - "**/dist/**"
+              - "**/build/**"
+              - "**/vendor/**"
+              - "**/node_modules/**"
+              - "**/.git/**"
+            include_patterns:
+              - "**/*.py"
+              - "**/*.js"
+              - "**/*.ts"
+              - "**/*.java"
+              - "**/*.go"
+              - "**/*.rs"
+              - "**/*.yml"
+              - "**/*.yaml"
+              - "**/*.json"
+              - "**/Dockerfile"
+              - "**/Makefile"
+            max_file_size_kb: 500
+            max_files_to_analyze: 1000
+          
+          claude_md:
+            version_prefix: "v"
+            required_sections:
+              - "PROJECT OVERVIEW"
+              - "ARCHITECTURE"
+              - "CORE COMPONENTS"
+              - "API ENDPOINTS"
+              - "DATA MODELS"
+              - "KEY ALGORITHMS & BUSINESS LOGIC"
+              - "DEPENDENCIES"
+              - "CONFIGURATION"
+              - "CURRENT STATE"
+              - "ENTRY POINTS"
+            optional_sections:
+              - "TESTING STRATEGY"
+              - "DEPLOYMENT"
+              - "SECURITY CONSIDERATIONS"
+              - "PERFORMANCE NOTES"
+          EOF
+          fi
+
+      - name: Prepare analysis context
+        id: prepare-context
+        run: |
+          echo "Preparing comprehensive analysis context..."
+          
+          # Create analysis directory
+          mkdir -p .claude-analysis-cache
+          
+          # Gather repository statistics
+          echo "## Repository Statistics" > .claude-analysis-cache/repo-stats.md
+          echo "- Total files: $(find . -type f | wc -l)" >> .claude-analysis-cache/repo-stats.md
+          echo "- Lines of code: $(find . -type f -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.java" -o -name "*.go" -o -name "*.rs" | xargs wc -l | tail -1 | awk '{print $1}')" >> .claude-analysis-cache/repo-stats.md
+          echo "- Last commit: $(git log -1 --format=%cd)" >> .claude-analysis-cache/repo-stats.md
+          echo "- Total commits: $(git rev-list --count HEAD)" >> .claude-analysis-cache/repo-stats.md
+          echo "- Contributors: $(git shortlog -sn | wc -l)" >> .claude-analysis-cache/repo-stats.md
+          
+          # Detect technology stack
+          echo "## Technology Stack" > .claude-analysis-cache/tech-stack.md
+          
+          # Check for various technology indicators
+          [ -f package.json ] && echo "- Node.js/JavaScript project detected" >> .claude-analysis-cache/tech-stack.md
+          [ -f requirements.txt ] || [ -f setup.py ] || [ -f pyproject.toml ] && echo "- Python project detected" >> .claude-analysis-cache/tech-stack.md
+          [ -f go.mod ] && echo "- Go project detected" >> .claude-analysis-cache/tech-stack.md
+          [ -f Cargo.toml ] && echo "- Rust project detected" >> .claude-analysis-cache/tech-stack.md
+          [ -f pom.xml ] || [ -f build.gradle ] && echo "- Java project detected" >> .claude-analysis-cache/tech-stack.md
+          [ -f docker-compose.yml ] || [ -f Dockerfile ] && echo "- Docker/containerization detected" >> .claude-analysis-cache/tech-stack.md
+          [ -d .github/workflows ] && echo "- GitHub Actions CI/CD detected" >> .claude-analysis-cache/tech-stack.md
+          
+          # Create file structure overview
+          echo "## Project Structure" > .claude-analysis-cache/structure.md
+          tree -L 3 -I 'node_modules|__pycache__|.git|dist|build|vendor' --dirsfirst >> .claude-analysis-cache/structure.md 2>/dev/null || \
+            find . -type d -not -path "./.git/*" -not -path "./node_modules/*" | head -50 >> .claude-analysis-cache/structure.md
+          
+          # Sample important files for analysis
+          echo "## Key Files for Analysis" > .claude-analysis-cache/key-files.md
+          
+          # Find and list entry points
+          find . -name "main.py" -o -name "app.py" -o -name "index.js" -o -name "main.go" -o -name "main.rs" | head -10 >> .claude-analysis-cache/key-files.md
+          
+          # Find configuration files
+          find . -maxdepth 3 -name "*.config.js" -o -name "*.config.ts" -o -name "config.py" -o -name "settings.py" | head -10 >> .claude-analysis-cache/key-files.md
+          
+          echo "context_ready=true" >> $GITHUB_OUTPUT
+
+      - name: Run Claude analysis
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            # Comprehensive CLAUDE.md Analysis and Update Task
+            
+            You are tasked with conducting a thorough analysis of this repository and creating/updating the CLAUDE.md file.
+            This file serves as the primary reference for Claude when working with this codebase.
+            
+            ## Analysis Depth: ${{ env.ANALYSIS_DEPTH }}
+            ## Focus Areas: ${{ env.FOCUS_AREAS }}
+            
+            ## STAGE 1: Repository Overview
+            Please analyze the repository structure and identify:
+            1. The main purpose and problem this project solves
+            2. Primary programming languages and frameworks
+            3. Service architecture (monolith, microservices, serverless, etc.)
+            4. Key dependencies and external services
+            5. Development tools and build systems
+            
+            ## STAGE 2: Deep Pattern Analysis  
+            Examine at least 50 representative files across the codebase to identify:
+            1. Naming conventions for:
+               - Variables (camelCase, snake_case, PascalCase)
+               - Functions/methods
+               - Classes/interfaces
+               - Files and directories
+               - Constants and enums
+            
+            2. Code organization patterns:
+               - Module structure
+               - Import organization
+               - Component/service boundaries
+               - Separation of concerns
+            
+            3. Error handling approaches:
+               - Exception types used
+               - Error propagation patterns
+               - Logging strategies
+               - Recovery mechanisms
+            
+            4. Testing strategies:
+               - Test file naming and location
+               - Testing frameworks used
+               - Mocking approaches
+               - Coverage expectations
+            
+            5. Documentation patterns:
+               - Comment styles (JSDoc, docstrings, etc.)
+               - README structure
+               - API documentation approach
+               - Inline documentation density
+            
+            ## STAGE 3: Standards Extraction
+            Based on your analysis, document:
+            1. Observed coding standards (not prescriptive, but descriptive)
+            2. Common patterns and idioms specific to this codebase
+            3. Architectural decisions and their rationale (if evident)
+            4. Security practices observed
+            5. Performance optimization patterns
+            6. Database/data access patterns
+            7. API design patterns (REST, GraphQL, gRPC, etc.)
+            8. Authentication and authorization approaches
+            
+            ## STAGE 4: CLAUDE.md Generation
+            Create a comprehensive CLAUDE.md file with these sections:
+            
+            1. **PROJECT OVERVIEW**
+               - Clear description of what the project does
+               - Main problem it solves
+               - Target users/use cases
+               - High-level tech stack
+            
+            2. **ARCHITECTURE**
+               - System design and component interaction
+               - Data flow
+               - External service dependencies
+               - Deployment architecture
+            
+            3. **CORE COMPONENTS**
+               - Main modules/services and their responsibilities
+               - Key classes and their purposes
+               - Important utilities and helpers
+            
+            4. **API ENDPOINTS** (if applicable)
+               - Endpoint patterns and conventions
+               - Request/response formats
+               - Authentication requirements
+               - Rate limiting/throttling
+            
+            5. **DATA MODELS**
+               - Database schema overview
+               - Key entities and relationships
+               - Data validation rules
+               - Migration strategies
+            
+            6. **KEY ALGORITHMS & BUSINESS LOGIC**
+               - Core algorithms and their implementation
+               - Business rules and constraints
+               - State machines/workflows
+               - Calculation methods
+            
+            7. **DEPENDENCIES**
+               - Critical external libraries
+               - Version constraints
+               - Optional vs required dependencies
+               - Security considerations
+            
+            8. **CONFIGURATION**
+               - Environment variables
+               - Configuration files and their purposes
+               - Feature flags
+               - Secrets management
+            
+            9. **CURRENT STATE**
+               - Known issues/TODOs in the code
+               - Technical debt markers
+               - Deprecated features
+               - Work in progress
+            
+            10. **ENTRY POINTS**
+                - How to start the application
+                - Main files to begin code exploration
+                - Developer setup instructions
+                - Common tasks and how to perform them
+            
+            ## Additional Instructions:
+            
+            1. **Be Specific**: Include actual examples from the codebase, with file paths
+            2. **Be Accurate**: Only document patterns you actually observe, not ideal practices
+            3. **Be Helpful**: Focus on information that would help Claude understand and work with the code
+            4. **Be Concise**: While comprehensive, avoid redundancy
+            5. **Include Warnings**: Note any anti-patterns or problematic areas
+            6. **Version Info**: Include the date and commit hash this analysis is based on
+            
+            ## Metadata to Include:
+            ```yaml
+            ---
+            last_updated: [current_date]
+            analyzed_commit: [git_commit_hash]
+            analysis_depth: ${{ env.ANALYSIS_DEPTH }}
+            focus_areas: ${{ env.FOCUS_AREAS }}
+            auto_generated: true
+            version: [semantic_version]
+            ---
+            ```
+            
+            ## Quality Checks:
+            Before finalizing, ensure:
+            1. All sections are present and substantive
+            2. Examples compile/run correctly
+            3. No contradictions between sections
+            4. File paths are accurate
+            5. Technical terms are used correctly
+            
+            Please generate the complete CLAUDE.md file now, incorporating all findings from your analysis.
+            Make sure the content is immediately useful for future Claude instances working with this codebase.
+            
+            If this is an update to an existing CLAUDE.md, preserve any manually added sections marked with 
+            `<!-- manual-section -->` comments.
+          claude_args: |
+            --max-turns 20
+            --model claude-opus-4-1-20250805
+
+      - name: Validate generated CLAUDE.md
+        id: validate
+        run: |
+          echo "Validating generated CLAUDE.md..."
+          
+          # Check if CLAUDE.md exists
+          if [ ! -f CLAUDE.md ]; then
+            echo "ERROR: CLAUDE.md was not created"
+            exit 1
+          fi
+          
+          # Validate required sections
+          required_sections=(
+            "PROJECT OVERVIEW"
+            "ARCHITECTURE"
+            "CORE COMPONENTS"
+            "API ENDPOINTS"
+            "DATA MODELS"
+            "KEY ALGORITHMS"
+            "DEPENDENCIES"
+            "CONFIGURATION"
+            "CURRENT STATE"
+            "ENTRY POINTS"
+          )
+          
+          missing_sections=()
+          for section in "${required_sections[@]}"; do
+            if ! grep -q "$section" CLAUDE.md; then
+              missing_sections+=("$section")
+            fi
+          done
+          
+          if [ ${#missing_sections[@]} -gt 0 ]; then
+            echo "WARNING: Missing sections: ${missing_sections[*]}"
+            echo "validation_status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "All required sections present"
+            echo "validation_status=success" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check file size (should be substantial)
+          file_size=$(wc -c < CLAUDE.md)
+          if [ $file_size -lt 1000 ]; then
+            echo "WARNING: CLAUDE.md seems too small ($file_size bytes)"
+            echo "validation_status=warning" >> $GITHUB_OUTPUT
+          fi
+          
+          # Extract version from CLAUDE.md
+          version=$(grep -m1 "version:" CLAUDE.md | cut -d: -f2 | tr -d ' ')
+          if [ -z "$version" ]; then
+            version="1.0.0"
+            echo "No version found, using default: $version"
+          fi
+          echo "claude_md_version=$version" >> $GITHUB_OUTPUT
+
+      - name: Create pull request
+        if: env.DRY_RUN == 'false'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: Update CLAUDE.md via automated analysis
+            
+            - Analysis depth: ${{ env.ANALYSIS_DEPTH }}
+            - Focus areas: ${{ env.FOCUS_AREAS }}
+            - Validation status: ${{ steps.validate.outputs.validation_status }}
+            - Version: ${{ steps.validate.outputs.claude_md_version }}
+            
+            Auto-generated by Claude Code maintenance workflow
+          branch: claude-md-update-${{ github.run_number }}
+          delete-branch: true
+          title: "🤖 Update CLAUDE.md - v${{ steps.validate.outputs.claude_md_version }}"
+          body: |
+            ## 📋 Automated CLAUDE.md Update
+            
+            This PR contains an automated update to the CLAUDE.md file based on comprehensive codebase analysis.
+            
+            ### 🔍 Analysis Details
+            - **Depth**: ${{ env.ANALYSIS_DEPTH }}
+            - **Focus Areas**: ${{ env.FOCUS_AREAS || 'All areas' }}
+            - **Validation Status**: ${{ steps.validate.outputs.validation_status }}
+            - **Version**: ${{ steps.validate.outputs.claude_md_version }}
+            - **Run Number**: ${{ github.run_number }}
+            
+            ### ✅ Validation Results
+            - Required sections: ${{ steps.validate.outputs.validation_status == 'success' && '✓ All present' || '⚠️ Some missing' }}
+            - File size check: ✓ Pass
+            
+            ### 📊 Change Summary
+            <details>
+            <summary>View detailed changes</summary>
+            
+            ```diff
+            # Changes will be shown in the Files changed tab
+            ```
+            
+            </details>
+            
+            ### 🔄 Next Steps
+            1. Review the changes carefully
+            2. Ensure the documentation accurately reflects current patterns
+            3. Check for any sensitive information that shouldn't be documented
+            4. Merge if everything looks correct
+            
+            ### 🤖 Automation Info
+            - Triggered by: ${{ github.event_name }}
+            - Workflow: [claude-md-maintenance.yml](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ---
+            *This PR was automatically generated. Please review before merging.*
+          labels: |
+            documentation
+            automated
+            claude-md
+          reviewers: ${{ github.repository_owner }}
+          draft: ${{ steps.validate.outputs.validation_status == 'warning' }}
+
+      - name: Generate summary report
+        if: always()
+        run: |
+          echo "## 📊 CLAUDE.md Maintenance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Analysis Depth**: ${{ env.ANALYSIS_DEPTH }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Focus Areas**: ${{ env.FOCUS_AREAS || 'All areas' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ env.DRY_RUN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Update**: ${{ env.FORCE_UPDATE }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes Detected**: ${{ steps.detect-changes.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Validation Status**: ${{ steps.validate.outputs.validation_status || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.validate.outputs.claude_md_version || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ env.DRY_RUN }}" == "false" ] && [ -n "${{ steps.create-pr.outputs.pull-request-url }}" ]; then
+            echo "- **Pull Request**: [#${{ steps.create-pr.outputs.pull-request-number }}](${{ steps.create-pr.outputs.pull-request-url }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Duration**: ~$((SECONDS / 60)) minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache Hit**: ${{ steps.cache-analysis.outputs.cache-hit || 'false' }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Send notifications
+        if: always() && github.event.inputs.notification_channel != 'none'
+        run: |
+          notification_type="${{ github.event.inputs.notification_channel }}"
+          
+          case $notification_type in
+            slack)
+              # Implement Slack notification (requires SLACK_WEBHOOK_URL secret)
+              echo "Slack notification would be sent here"
+              ;;
+            email)
+              # Email notification would require email action
+              echo "Email notification would be sent here"
+              ;;
+            issue)
+              # Create an issue with the summary
+              if [ "${{ env.DRY_RUN }}" == "false" ] && [ -n "${{ steps.create-pr.outputs.pull-request-url }}" ]; then
+                gh issue create \
+                  --title "CLAUDE.md Updated - Review Required" \
+                  --body "An automated update to CLAUDE.md has been created. Please review PR #${{ steps.create-pr.outputs.pull-request-number }}" \
+                  --label "documentation,automated"
+              fi
+              ;;
+          esac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup old branches
+        if: success()
+        run: |
+          # Clean up old claude-md-update branches (keep last 3)
+          git fetch --prune
+          branches=$(git branch -r | grep 'origin/claude-md-update-' | sort -rn | tail -n +4)
+          for branch in $branches; do
+            branch_name=${branch#origin/}
+            echo "Deleting old branch: $branch_name"
+            git push origin --delete $branch_name || true
+          done
