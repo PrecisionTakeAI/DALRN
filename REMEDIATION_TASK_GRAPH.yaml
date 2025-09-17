@@ -1,0 +1,481 @@
+# DALRN Remediation Task Graph - PoDP Compliant
+# Generated: 2025-09-17
+# Total Epsilon Budget: 4.0
+# Estimated Duration: 6-8 weeks
+
+metadata:
+  version: "1.0.0"
+  orchestrator: "DALRN-PODP"
+  compliance_level: "STRICT"
+  verification_required: true
+  total_epsilon_budget: 4.0
+  estimated_tasks: 47
+  critical_path_weeks: 8
+
+# PHASE 0: IMMEDIATE FIXES (Week 0 - BLOCKING)
+phase_0_immediate:
+  tasks:
+    - id: task-001
+      name: "Fix gateway merge conflict"
+      epsilon_budget: 0.001
+      dependencies: []
+      priority: "BLOCKER"
+      estimated_hours: 2
+      podp_receipts:
+        - gateway_conflict_resolved
+      verification:
+        - "app.py has no <<<<<<< markers"
+        - "Service starts successfully"
+        - "All endpoints respond 200"
+      activeForm: "Fixing gateway merge conflict"
+
+    - id: task-002
+      name: "Document truth baseline"
+      epsilon_budget: 0.001
+      dependencies: []
+      priority: "BLOCKER"
+      estimated_hours: 4
+      podp_receipts:
+        - documentation_truth_established
+      verification:
+        - "False claims removed"
+        - "Accurate status documented"
+      activeForm: "Documenting truth baseline"
+
+    - id: task-003
+      name: "Install TenSEAL library"
+      epsilon_budget: 0.002
+      dependencies: []
+      priority: "CRITICAL"
+      estimated_hours: 3
+      podp_receipts:
+        - tenseal_installation_complete
+      verification:
+        - "import tenseal succeeds"
+        - "TENSEAL_AVAILABLE = True"
+      activeForm: "Installing TenSEAL library"
+
+# PHASE 1: CRITICAL INFRASTRUCTURE (Week 1)
+phase_1_critical:
+  tasks:
+    - id: task-004
+      name: "Implement blockchain client anchor_root"
+      epsilon_budget: 0.010
+      dependencies: [task-001]
+      priority: "CRITICAL"
+      estimated_hours: 16
+      podp_receipts:
+        - blockchain_client_implemented
+        - contract_abi_loaded
+        - transaction_signing_working
+      verification:
+        - "Real transaction hash returned"
+        - "Contract interaction verified"
+        - "Gas estimation accurate"
+      activeForm: "Implementing blockchain client anchor_root"
+
+    - id: task-005
+      name: "Setup database persistence for gateway"
+      epsilon_budget: 0.005
+      dependencies: [task-001]
+      priority: "CRITICAL"
+      estimated_hours: 12
+      podp_receipts:
+        - database_schema_created
+        - persistence_layer_implemented
+      verification:
+        - "PostgreSQL schema exists"
+        - "Data persists across restarts"
+      activeForm: "Setting up database persistence for gateway"
+
+    - id: task-006
+      name: "Fix FHE service encryption"
+      epsilon_budget: 0.015
+      dependencies: [task-003]
+      priority: "CRITICAL"
+      estimated_hours: 20
+      podp_receipts:
+        - ckks_context_working
+        - encryption_verified
+        - dot_product_accurate
+      verification:
+        - "Encrypted operations work"
+        - "Error rate <10%"
+        - "Performance benchmarked"
+      activeForm: "Fixing FHE service encryption"
+
+# PHASE 2: SOAN IMPLEMENTATION (Weeks 2-4)
+phase_2_soan:
+  tasks:
+    - id: task-007
+      name: "Create SOAN topology.py"
+      epsilon_budget: 0.020
+      dependencies: [task-001]
+      priority: "CRITICAL"
+      estimated_hours: 24
+      podp_receipts:
+        - topology_module_created
+        - watts_strogatz_implemented
+        - network_generation_verified
+      verification:
+        - "File exists with ~400 lines"
+        - "Generates N=100, k=6, p=0.1 networks"
+        - "Tests pass"
+      activeForm: "Creating SOAN topology.py"
+
+    - id: task-008
+      name: "Create SOAN gnn_predictor.py"
+      epsilon_budget: 0.025
+      dependencies: [task-007]
+      priority: "CRITICAL"
+      estimated_hours: 32
+      podp_receipts:
+        - gnn_module_created
+        - gcn_layers_implemented
+        - prediction_accuracy_verified
+      verification:
+        - "File exists with ~400 lines"
+        - "2-layer GCN working"
+        - "Latency prediction accurate"
+      activeForm: "Creating SOAN gnn_predictor.py"
+
+    - id: task-009
+      name: "Create SOAN queue_model.py"
+      epsilon_budget: 0.015
+      dependencies: [task-007]
+      priority: "HIGH"
+      estimated_hours: 20
+      podp_receipts:
+        - queue_model_created
+        - mm1_implemented
+        - stability_detection_working
+      verification:
+        - "File exists with ~300 lines"
+        - "M/M/1 queue simulation works"
+        - "Stability λ < μ detected"
+      activeForm: "Creating SOAN queue_model.py"
+
+    - id: task-010
+      name: "Create SOAN rewiring.py"
+      epsilon_budget: 0.020
+      dependencies: [task-007, task-008, task-009]
+      priority: "HIGH"
+      estimated_hours: 28
+      podp_receipts:
+        - rewiring_module_created
+        - epsilon_greedy_implemented
+        - optimization_verified
+      verification:
+        - "File exists with ~350 lines"
+        - "ε-greedy with ε=0.2"
+        - "20 iterations complete"
+      activeForm: "Creating SOAN rewiring.py"
+
+    - id: task-011
+      name: "Create SOAN orchestrator.py"
+      epsilon_budget: 0.030
+      dependencies: [task-007, task-008, task-009, task-010]
+      priority: "CRITICAL"
+      estimated_hours: 40
+      podp_receipts:
+        - orchestrator_created
+        - component_coordination_working
+        - api_endpoints_functional
+      verification:
+        - "File exists with ~600 lines"
+        - "Coordinates all SOAN components"
+        - "REST API working"
+      activeForm: "Creating SOAN orchestrator.py"
+
+    - id: task-012
+      name: "Integrate SOAN with gateway"
+      epsilon_budget: 0.025
+      dependencies: [task-011]
+      priority: "HIGH"
+      estimated_hours: 24
+      podp_receipts:
+        - soan_integration_created
+        - gateway_connection_working
+        - requests_routed_correctly
+      verification:
+        - "soan_integration.py exists"
+        - "Gateway calls SOAN service"
+        - "Integration tests pass"
+      activeForm: "Integrating SOAN with gateway"
+
+    - id: task-013
+      name: "Create comprehensive SOAN tests"
+      epsilon_budget: 0.015
+      dependencies: [task-011]
+      priority: "HIGH"
+      estimated_hours: 32
+      podp_receipts:
+        - test_suite_created
+        - coverage_80_percent
+        - all_tests_passing
+      verification:
+        - "test_soan.py exists with 900+ lines"
+        - "Coverage >80%"
+        - "All tests pass"
+      activeForm: "Creating comprehensive SOAN tests"
+
+# PHASE 3: PoDP COMPLIANCE (Week 5)
+phase_3_podp:
+  tasks:
+    - id: task-014
+      name: "Instrument SOAN with PoDP receipts"
+      epsilon_budget: 0.010
+      dependencies: [task-011]
+      priority: "HIGH"
+      estimated_hours: 16
+      podp_receipts:
+        - soan_receipts_implemented
+        - receipt_chain_valid
+        - merkle_root_generated
+      verification:
+        - "Every SOAN operation has receipts"
+        - "Receipt chains validate"
+        - "Merkle roots correct"
+      activeForm: "Instrumenting SOAN with PoDP receipts"
+
+    - id: task-015
+      name: "Fix gateway PoDP middleware"
+      epsilon_budget: 0.008
+      dependencies: [task-001, task-014]
+      priority: "HIGH"
+      estimated_hours: 12
+      podp_receipts:
+        - middleware_fixed
+        - receipt_validation_working
+      verification:
+        - "All requests generate receipts"
+        - "Chains properly linked"
+      activeForm: "Fixing gateway PoDP middleware"
+
+    - id: task-016
+      name: "Validate all PoDP receipts"
+      epsilon_budget: 0.005
+      dependencies: [task-014, task-015]
+      priority: "HIGH"
+      estimated_hours: 16
+      podp_receipts:
+        - validation_complete
+        - no_false_receipts
+      verification:
+        - "No false receipts generated"
+        - "All operations verifiable"
+      activeForm: "Validating all PoDP receipts"
+
+# PHASE 4: EPSILON BUDGET ENFORCEMENT (Week 6)
+phase_4_epsilon:
+  tasks:
+    - id: task-017
+      name: "Implement strict epsilon enforcement"
+      epsilon_budget: 0.012
+      dependencies: [task-001]
+      priority: "HIGH"
+      estimated_hours: 20
+      podp_receipts:
+        - enforcement_implemented
+        - overflow_prevention_working
+      verification:
+        - "Budget cannot be exceeded"
+        - "Overflow prevention active"
+        - "All operations tracked"
+      activeForm: "Implementing strict epsilon enforcement"
+
+    - id: task-018
+      name: "Add epsilon budget to SOAN"
+      epsilon_budget: 0.008
+      dependencies: [task-011, task-017]
+      priority: "MEDIUM"
+      estimated_hours: 12
+      podp_receipts:
+        - soan_budget_tracked
+        - limits_enforced
+      verification:
+        - "Each SOAN op has budget"
+        - "Total tracked accurately"
+      activeForm: "Adding epsilon budget to SOAN"
+
+    - id: task-019
+      name: "Implement budget composition rules"
+      epsilon_budget: 0.010
+      dependencies: [task-017]
+      priority: "MEDIUM"
+      estimated_hours: 16
+      podp_receipts:
+        - composition_rules_implemented
+        - parallel_sequential_handled
+      verification:
+        - "Sequential composition works"
+        - "Parallel composition works"
+      activeForm: "Implementing budget composition rules"
+
+# PHASE 5: INTEGRATION TESTING (Week 7)
+phase_5_integration:
+  tasks:
+    - id: task-020
+      name: "Full system integration test"
+      epsilon_budget: 0.015
+      dependencies: [task-012, task-016, task-018]
+      priority: "HIGH"
+      estimated_hours: 24
+      podp_receipts:
+        - integration_test_passed
+        - all_services_connected
+      verification:
+        - "End-to-end flow works"
+        - "All services communicate"
+        - "PoDP chains complete"
+      activeForm: "Running full system integration test"
+
+    - id: task-021
+      name: "Load testing and performance"
+      epsilon_budget: 0.020
+      dependencies: [task-020]
+      priority: "MEDIUM"
+      estimated_hours: 20
+      podp_receipts:
+        - load_test_complete
+        - performance_targets_met
+      verification:
+        - "100 RPS sustained"
+        - "P95 latency <600ms"
+        - "No memory leaks"
+      activeForm: "Running load testing and performance"
+
+    - id: task-022
+      name: "Security audit"
+      epsilon_budget: 0.025
+      dependencies: [task-020]
+      priority: "HIGH"
+      estimated_hours: 32
+      podp_receipts:
+        - security_audit_complete
+        - vulnerabilities_fixed
+      verification:
+        - "No critical vulnerabilities"
+        - "Encryption verified"
+        - "Access controls working"
+      activeForm: "Conducting security audit"
+
+# PHASE 6: PRODUCTION PREP (Week 8)
+phase_6_production:
+  tasks:
+    - id: task-023
+      name: "Production configuration"
+      epsilon_budget: 0.010
+      dependencies: [task-020]
+      priority: "MEDIUM"
+      estimated_hours: 16
+      podp_receipts:
+        - prod_config_created
+        - secrets_managed
+      verification:
+        - "Production configs exist"
+        - "Secrets properly managed"
+        - "Environment variables set"
+      activeForm: "Creating production configuration"
+
+    - id: task-024
+      name: "Deploy to staging"
+      epsilon_budget: 0.015
+      dependencies: [task-023]
+      priority: "MEDIUM"
+      estimated_hours: 12
+      podp_receipts:
+        - staging_deployment_complete
+        - smoke_tests_passed
+      verification:
+        - "Staging environment running"
+        - "All services healthy"
+        - "Monitoring active"
+      activeForm: "Deploying to staging"
+
+    - id: task-025
+      name: "Final verification and sign-off"
+      epsilon_budget: 0.010
+      dependencies: [task-024]
+      priority: "HIGH"
+      estimated_hours: 16
+      podp_receipts:
+        - final_verification_complete
+        - ready_for_production
+      verification:
+        - "All requirements met"
+        - "Documentation accurate"
+        - "Team sign-off obtained"
+      activeForm: "Final verification and sign-off"
+
+# Budget Summary
+epsilon_budget_summary:
+  phase_0: 0.004
+  phase_1: 0.030
+  phase_2: 0.165
+  phase_3: 0.023
+  phase_4: 0.030
+  phase_5: 0.060
+  phase_6: 0.035
+  total_allocated: 0.347
+  total_available: 4.000
+  remaining: 3.653
+  utilization: "8.7%"
+
+# Critical Path
+critical_path:
+  - task-001  # Gateway fix (blocker)
+  - task-007  # SOAN topology (foundation)
+  - task-008  # GNN predictor (core ML)
+  - task-011  # Orchestrator (coordination)
+  - task-012  # Integration (connection)
+  - task-014  # PoDP instrumentation (compliance)
+  - task-020  # Integration test (validation)
+  - task-025  # Final sign-off (completion)
+
+# Resource Requirements
+resources:
+  developers_needed: 4
+  weeks_required: 8
+  total_person_hours: 1280
+  infrastructure:
+    - "Development Kubernetes cluster"
+    - "PostgreSQL database"
+    - "Redis cache"
+    - "IPFS node"
+    - "Ethereum testnet access"
+    - "GPU for FAISS (optional)"
+
+# Risk Factors
+risks:
+  - description: "SOAN implementation complexity"
+    mitigation: "Incremental development with frequent testing"
+
+  - description: "TenSEAL compilation issues"
+    mitigation: "Docker container with pre-compiled binaries"
+
+  - description: "Blockchain gas costs"
+    mitigation: "Batch anchoring and testnet validation"
+
+  - description: "Integration failures"
+    mitigation: "Comprehensive integration test suite"
+
+# Success Metrics
+success_metrics:
+  - metric: "All 25 tasks completed"
+    target: "100%"
+
+  - metric: "Test coverage"
+    target: ">80%"
+
+  - metric: "PoDP compliance"
+    target: "100% receipts valid"
+
+  - metric: "Epsilon budget compliance"
+    target: "Zero overflows"
+
+  - metric: "Performance"
+    target: "P95 <600ms, 100 RPS"
+
+  - metric: "Security"
+    target: "Zero critical vulnerabilities"
