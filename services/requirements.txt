@@ -8,6 +8,7 @@ httpx==0.25.2
 opacus==1.4.0  # For differential privacy accounting
 numpy==1.24.3
 torch==2.1.0  # Required by Opacus
+tenseal==0.3.16  # For homomorphic encryption
 
 # Federated Learning (optional, install based on needs)
 # flwr==1.5.0  # Flower framework

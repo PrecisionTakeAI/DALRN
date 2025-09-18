@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-09-17 16:42:59.181003",
+  "real_mocks": 3,
+  "false_positives": 0,
+  "real_issues": {
+    "empty_implementations": 0,
+    "hardcoded_credentials": 1,
+    "todos_in_production": 1,
+    "missing_error_handling": 3
+  },
+  "total_real_issues": 8,
+  "actual_completion": 97.82608695652173
+}

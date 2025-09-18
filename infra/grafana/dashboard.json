@@ -1,0 +1,132 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "dalrn-main",
+    "title": "DALRN System Dashboard",
+    "tags": ["dalrn", "production"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "5s",
+    "panels": [
+      {
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "id": 2,
+        "title": "Response Time P95",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "id": 3,
+        "title": "PoDP Receipt Generation",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(podp_receipts_generated_total[5m])",
+            "legendFormat": "Receipts/sec"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+        "id": 4,
+        "title": "Epsilon Budget Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "epsilon_budget_remaining",
+            "legendFormat": "{{tenant_id}}"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+        "id": 5,
+        "title": "Vector Search Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "search_recall_at_10",
+            "legendFormat": "Recall@10"
+          },
+          {
+            "expr": "search_latency_p95_ms",
+            "legendFormat": "P95 Latency (ms)"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
+        "id": 6,
+        "title": "Active Disputes",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "disputes_active_total"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
+        "id": 7,
+        "title": "Rate Limited Requests",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "sum(rate(rate_limit_exceeded_total[5m]))"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16},
+        "id": 8,
+        "title": "FHE Operations/min",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "rate(fhe_operations_total[1m]) * 60"
+          }
+        ]
+      },
+      {
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+        "id": 9,
+        "title": "System Health",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "up{job='dalrn'}"
+          }
+        ],
+        "thresholds": "0.5,1",
+        "colors": ["red", "yellow", "green"],
+        "colorValue": true
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+    }
+  }
+}

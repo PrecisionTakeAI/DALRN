@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+  # Enhanced Gateway Service
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dalrn-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      # Application settings
+      - ENVIRONMENT=production
+      - DEBUG=false
+
+      # Redis settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+
+      # PostgreSQL settings
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=dalrn
+      - POSTGRES_USER=dalrn_user
+      - POSTGRES_PASSWORD=dalrn_pass
+
+      # IPFS settings
+      - IPFS_HOST=ipfs
+      - IPFS_API_PORT=5001
+      - IPFS_GATEWAY_PORT=8080
+
+      # Service URLs
+      - FHE_SERVICE_URL=http://fhe:8200
+      - SEARCH_SERVICE_URL=http://search:8100
+      - NEGOTIATION_SERVICE_URL=http://negotiation:8300
+      - FL_SERVICE_URL=http://fl:8400
+      - AGENTS_SERVICE_URL=http://agents:8500
+
+      # PoDP settings
+      - PODP_ENABLED=true
+      - PODP_MERKLE_ALGO=keccak256
+
+      # Privacy budget
+      - EPSILON_TOTAL_BUDGET=4.0
+
+      # Feature flags
+      - ENABLE_SOAN_ROUTING=true
+      - ENABLE_AUTO_ANCHORING=true
+
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      ipfs:
+        condition: service_started
+    networks:
+      - dalrn-network
+    volumes:
+      - gateway-logs:/app/logs
+      - gateway-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: dalrn-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - dalrn-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # PostgreSQL for persistent storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: dalrn-postgres
+    environment:
+      - POSTGRES_DB=dalrn
+      - POSTGRES_USER=dalrn_user
+      - POSTGRES_PASSWORD=dalrn_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - dalrn-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dalrn_user -d dalrn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # IPFS for distributed storage
+  ipfs:
+    image: ipfs/go-ipfs:latest
+    container_name: dalrn-ipfs
+    ports:
+      - "5001:5001"  # API
+      - "8080:8080"  # Gateway
+      - "4001:4001"  # P2P
+    volumes:
+      - ipfs-data:/data/ipfs
+    networks:
+      - dalrn-network
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_PATH=/data/ipfs
+    restart: unless-stopped
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dalrn-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - dalrn-network
+    restart: unless-stopped
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dalrn-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - dalrn-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  dalrn-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  gateway-logs:
+  gateway-data:
+  redis-data:
+  postgres-data:
+  ipfs-data:
+  prometheus-data:
+  grafana-data:

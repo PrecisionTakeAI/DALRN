@@ -2,6 +2,7 @@
 FROM python:3.11-slim as builder
 
 # Install build dependencies for TenSEAL and cryptographic libraries
+# TenSEAL requires additional dependencies for SEAL library compilation
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -11,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libprotobuf-dev \
     protobuf-compiler \
+    libboost-all-dev \
+    libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -18,17 +21,28 @@ WORKDIR /build
 
 # Copy requirements first for better caching
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Install Python dependencies with REQUIRED TenSEAL
+# CRITICAL: TenSEAL is mandatory - build must fail if installation fails
+# Note: TenSEAL compilation may take significant time
+RUN pip install --user --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --user --no-cache-dir tenseal==0.3.16 || \
+    (echo "FATAL: TenSEAL installation failed. This service REQUIRES real homomorphic encryption." && exit 1) && \
+    pip install --user --no-cache-dir -r requirements.txt
 
 # Production stage
 FROM python:3.11-slim
 
 # Install runtime dependencies
+# TenSEAL requires these at runtime for SEAL operations
 RUN apt-get update && apt-get install -y \
     curl \
     libssl3 \
     libprotobuf32 \
     libgomp1 \
+    libboost-thread1.74.0 \
+    libboost-system1.74.0 \
+    libomp5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and directories

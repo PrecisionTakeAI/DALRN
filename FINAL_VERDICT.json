@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-09-17T16:29:37.957074",
+  "claimed_completion": "100%",
+  "actual_completion": "56.7%",
+  "total_files": 78,
+  "total_lines": 27327,
+  "total_issues": 367,
+  "components_working": 83.33333333333334,
+  "deductions": 43.33333333333333,
+  "details": {
+    "mock_functions": 237,
+    "todos": 8,
+    "not_implemented": 6,
+    "empty_functions": 10,
+    "hardcoded_values": 190
+  }
+}
