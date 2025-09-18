@@ -12,9 +12,34 @@ import json
 
 Base = declarative_base()
 
-# Database configuration - use SQLite for immediate testing, PostgreSQL in production
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dalrn_user:DALRN_Pr0d_2024!SecureP@ss@localhost:5432/dalrn_production")
-# For production: "postgresql://dalrn:password@localhost:5432/dalrn_db"
+# Database configuration - secure environment-based setup
+def get_database_url():
+    """Get database URL from environment with secure defaults"""
+
+    # Check for full DATABASE_URL first
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        return db_url
+
+    # Build URL from individual components
+    db_driver = os.getenv("DATABASE_DRIVER", "postgresql")
+    db_user = os.getenv("DATABASE_USER", "dalrn_user")
+    db_password = os.getenv("DATABASE_PASSWORD")
+    db_host = os.getenv("DATABASE_HOST", "localhost")
+    db_port = os.getenv("DATABASE_PORT", "5432")
+    db_name = os.getenv("DATABASE_NAME", "dalrn_production")
+
+    if db_password:
+        # Use PostgreSQL if password is provided
+        return f"{db_driver}://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    else:
+        # Fallback to SQLite for development (no credentials in code)
+        from pathlib import Path
+        db_path = Path("data") / "dalrn.db"
+        db_path.parent.mkdir(exist_ok=True)
+        return f"sqlite:///{db_path}"
+
+DATABASE_URL = get_database_url()
 
 engine = create_engine(DATABASE_URL, pool_size=20, max_overflow=40, echo=False)
 SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))

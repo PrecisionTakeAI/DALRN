@@ -23,6 +23,17 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 import uvicorn
 
+# Import authentication
+from auth.jwt_auth import (
+    get_current_user,
+    auth_router,
+    AuthService,
+    UserLogin,
+    UserCreate,
+    require_role
+)
+from database.models import User
+
 # Import fast cache for performance
 try:
     from cache.fast_cache import get_cache
@@ -135,6 +146,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Include authentication router
+app.include_router(auth_router)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -204,12 +218,13 @@ async def healthz():
           dependencies=[Depends(rate_limit)])
 async def submit_dispute(
     body: SubmitDisputeRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)  # Add authentication
 ) -> SubmitDisputeResponse:
     """Submit a new dispute with validation and database storage"""
     try:
-        # Log submission
-        logger.info(f"Processing dispute submission with {len(body.parties)} parties")
+        # Log authenticated submission
+        logger.info(f"User {current_user.username} submitting dispute with {len(body.parties)} parties")
 
         # Create dispute in database
         dispute_id = create_dispute(body.dict())
