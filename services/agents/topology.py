@@ -108,7 +108,7 @@ class WattsStrogatzTopology:
 
         # Calculate graph hash
         adj_matrix = nx.adjacency_matrix(self.graph).todense()
-        graph_hash = keccak(json.dumps(adj_matrix.tolist(), sort_keys=True))
+        graph_hash = keccak(json.dumps(adj_matrix.tolist(), sort_keys=True).encode())
 
         # Create exit receipt
         exit_receipt = Receipt(
@@ -241,7 +241,7 @@ class WattsStrogatzTopology:
                 "metrics": asdict(self.metrics)
             },
             hashes={
-                "metrics_hash": keccak(json.dumps(asdict(self.metrics), sort_keys=True))
+                "metrics_hash": keccak(json.dumps(asdict(self.metrics), sort_keys=True).encode())
             },
             signatures=[],
             ts=datetime.utcnow().isoformat()
@@ -305,7 +305,7 @@ class WattsStrogatzTopology:
             "metrics": asdict(self.metrics) if self.metrics else None,
             "receipt_chain": {
                 "dispute_id": self.receipt_chain.dispute_id,
-                "merkle_root": self.receipt_chain.get_merkle_root(),
+                "merkle_root": self.receipt_chain.merkle_root,
                 "receipt_count": len(self.receipt_chain.receipts)
             }
         }
@@ -323,7 +323,7 @@ class WattsStrogatzTopology:
                 "edge_count": len(network_data["edges"])
             },
             artifacts={
-                "export_hash": keccak(json.dumps(network_data, sort_keys=True)),
+                "export_hash": keccak(json.dumps(network_data, sort_keys=True).encode()),
                 "epsilon_used": self.EPSILON_EXPORT,
                 "epsilon_total": self.epsilon_spent + self.EPSILON_EXPORT
             },

@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 class ValidationError(Exception):
     """Custom exception for validation errors."""
-    pass
+    def __init__(self, message: str, code: str = "VALIDATION_ERROR", details: dict = None):
+        self.message = message
+        self.code = code
+        self.details = details or {}
+        super().__init__(self.message)
 
 class NegotiationRequest(BaseModel):
     """Enhanced negotiation request with comprehensive validation."""

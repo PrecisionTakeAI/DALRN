@@ -1,0 +1,329 @@
+# DALRN Complete Implementation Fix Plan
+# Total Issues: 364
+# Target: True 100% completion with zero mocks
+# Performance Target: <200ms response time
+
+metadata:
+  created_at: "2025-09-17T10:00:00Z"
+  total_epsilon_budget: 10.0
+  target_performance_ms: 200
+  target_coverage_percent: 80
+  total_issues_to_fix: 364
+
+priority_levels:
+  P0_CRITICAL:
+    description: "System breaking issues that prevent operation"
+    fix_timeline: "immediate"
+    epsilon_budget: 4.0
+  P1_HIGH:
+    description: "Major functionality gaps"
+    fix_timeline: "24 hours"
+    epsilon_budget: 3.0
+  P2_MEDIUM:
+    description: "Important but not blocking"
+    fix_timeline: "48 hours"
+    epsilon_budget: 2.0
+  P3_LOW:
+    description: "Nice to have improvements"
+    fix_timeline: "72 hours"
+    epsilon_budget: 1.0
+
+tasks:
+  # P0 - CRITICAL FIXES (Performance & Core Functions)
+  - id: task-001
+    name: "Fix performance bottleneck - reduce from 2048ms to <200ms"
+    priority: P0
+    epsilon_budget: 0.5
+    dependencies: []
+    podp_receipts: [perf_analysis, optimization_receipt]
+    components:
+      - gateway/app.py
+      - gateway/middleware.py
+    actions:
+      - Remove all sleep() and delay functions
+      - Implement proper async/await patterns
+      - Add connection pooling for database
+      - Enable response caching with Redis
+      - Remove synchronous blocking operations
+    verification:
+      - Run performance test suite
+      - Measure P95 latency < 200ms
+      - Load test with 1000 concurrent requests
+
+  - id: task-002
+    name: "Replace SQLite with PostgreSQL for production database"
+    priority: P0
+    epsilon_budget: 0.3
+    dependencies: []
+    podp_receipts: [db_migration_receipt]
+    components:
+      - services/database/
+      - database/models.py
+    actions:
+      - Configure PostgreSQL connection
+      - Migrate schema from SQLite
+      - Update all database queries
+      - Add connection pooling
+      - Implement proper transactions
+
+  - id: task-003
+    name: "Deploy and connect real blockchain client"
+    priority: P0
+    epsilon_budget: 0.4
+    dependencies: []
+    podp_receipts: [blockchain_deploy_receipt]
+    components:
+      - services/blockchain/real_client.py
+      - services/chain/contracts/
+    actions:
+      - Deploy AnchorReceipts contract to testnet
+      - Configure Web3 provider connection
+      - Replace mock transaction hashes
+      - Implement proper gas estimation
+      - Add transaction receipt validation
+
+  - id: task-004
+    name: "Implement 6 not implemented functions"
+    priority: P0
+    epsilon_budget: 0.3
+    dependencies: []
+    podp_receipts: [implementation_receipts]
+    functions_to_implement:
+      - fhe/service.py::perform_encrypted_computation
+      - negotiation/service.py::calculate_nash_equilibrium
+      - search/service.py::build_faiss_index
+      - fl/flower_integration.py::train_round
+      - agents/orchestrator.py::optimize_topology
+      - gateway/auth.py::validate_jwt_token
+
+  # P1 - HIGH PRIORITY (Mock Removal)
+  - id: task-005
+    name: "Remove mock IPFS client and implement real IPFS"
+    priority: P1
+    epsilon_budget: 0.2
+    dependencies: [task-001]
+    podp_receipts: [ipfs_integration_receipt]
+    components:
+      - services/common/ipfs.py
+    actions:
+      - Connect to real IPFS node
+      - Implement proper CID generation
+      - Add retry logic for failed uploads
+      - Implement pinning for critical data
+
+  - id: task-006
+    name: "Replace 235 mock functions with real implementations"
+    priority: P1
+    epsilon_budget: 2.0
+    dependencies: [task-005]
+    podp_receipts: [mock_removal_receipts]
+    mock_categories:
+      ipfs_mocks:
+        count: 45
+        files:
+          - common/ipfs.py
+          - gateway/app.py
+      database_mocks:
+        count: 38
+        files:
+          - database/queries.py
+          - gateway/storage.py
+      blockchain_mocks:
+        count: 52
+        files:
+          - blockchain/real_client.py
+          - chain/client.py
+      auth_mocks:
+        count: 28
+        files:
+          - gateway/auth.py
+          - common/jwt_utils.py
+      service_mocks:
+        count: 72
+        files:
+          - fhe/service.py
+          - search/service.py
+          - negotiation/service.py
+          - fl/eps_ledger.py
+
+  - id: task-007
+    name: "Implement proper PoDP receipt generation"
+    priority: P1
+    epsilon_budget: 0.5
+    dependencies: [task-001]
+    podp_receipts: [podp_implementation_receipt]
+    components:
+      - services/common/podp.py
+      - All service endpoints
+    actions:
+      - Add receipt generation to all endpoints
+      - Implement proper Merkle tree construction
+      - Add signature validation
+      - Store receipts in IPFS
+      - Anchor Merkle roots on blockchain
+
+  # P2 - MEDIUM PRIORITY (Configuration & Testing)
+  - id: task-008
+    name: "Move 167 hardcoded values to configuration"
+    priority: P2
+    epsilon_budget: 0.3
+    dependencies: [task-001]
+    podp_receipts: [config_migration_receipt]
+    hardcoded_categories:
+      ports:
+        count: 12
+        default_values:
+          GATEWAY_PORT: 8000
+          SEARCH_PORT: 8100
+          FHE_PORT: 8200
+          NEGOTIATION_PORT: 8300
+      timeouts:
+        count: 24
+        default_values:
+          REQUEST_TIMEOUT: 30
+          CONNECTION_TIMEOUT: 10
+      limits:
+        count: 35
+        default_values:
+          MAX_BATCH_SIZE: 1000
+          EPSILON_BUDGET: 4.0
+      urls:
+        count: 18
+        default_values:
+          IPFS_API: "http://ipfs:5001"
+          POSTGRES_URL: "postgresql://user:pass@localhost/dalrn"
+      dimensions:
+        count: 78
+        default_values:
+          VECTOR_DIM: 768
+          HNSW_M: 32
+          NETWORK_SIZE: 100
+
+  - id: task-009
+    name: "Fix 106 fake return statements"
+    priority: P2
+    epsilon_budget: 0.8
+    dependencies: [task-006]
+    podp_receipts: [return_fix_receipts]
+    fake_returns:
+      empty_lists: 42
+      empty_dicts: 31
+      empty_strings: 18
+      none_values: 15
+
+  - id: task-010
+    name: "Implement comprehensive test suite"
+    priority: P2
+    epsilon_budget: 0.5
+    dependencies: [task-007, task-009]
+    podp_receipts: [test_suite_receipt]
+    test_requirements:
+      - Unit tests for all functions
+      - Integration tests for all services
+      - Performance benchmark tests
+      - PoDP compliance tests
+      - Epsilon budget boundary tests
+      - Load testing suite
+      - Security testing
+    coverage_targets:
+      overall: 80
+      critical_paths: 95
+      podp_functions: 100
+
+  # P3 - LOW PRIORITY (Documentation & Cleanup)
+  - id: task-011
+    name: "Implement 9 empty functions"
+    priority: P3
+    epsilon_budget: 0.2
+    dependencies: [task-004]
+    podp_receipts: [empty_function_receipts]
+    empty_functions:
+      - gateway/metrics.py::record_metric
+      - search/reweight.py::apply_quantum_reweighting
+      - fhe/context.py::cleanup_expired_contexts
+      - negotiation/explanation.py::generate_visual_cid
+      - fl/aggregation.py::aggregate_models
+      - agents/queue.py::estimate_wait_time
+      - chain/events.py::listen_for_events
+      - common/cache.py::invalidate_cache
+      - database/backup.py::create_backup
+
+  - id: task-012
+    name: "Fix remaining 8 TODOs/FIXMEs"
+    priority: P3
+    epsilon_budget: 0.1
+    dependencies: [task-011]
+    podp_receipts: [todo_fix_receipts]
+    todos:
+      - fhe/service.py:36 - Install TenSEAL
+      - gateway/app.py:49 - Replace in-memory storage
+      - chain/client.py - Remove mock implementation
+      - search/service.py - Add GPU support
+      - fl/flower.py - Implement cross-silo federation
+      - agents/rewiring.py - Add adaptive epsilon
+      - negotiation/batna.py - Implement dynamic BATNA
+      - common/monitoring.py - Add Prometheus metrics
+
+verification_suite:
+  performance_tests:
+    - name: "Response time test"
+      target: "P95 < 200ms"
+      command: "pytest tests/performance/test_latency.py"
+
+    - name: "Throughput test"
+      target: "1000 req/sec"
+      command: "locust -f tests/load/locustfile.py"
+
+    - name: "Scale test"
+      target: "100k disputes/day"
+      command: "python tests/scale/test_100k_disputes.py"
+
+  compliance_tests:
+    - name: "PoDP receipt validation"
+      command: "pytest tests/compliance/test_podp_receipts.py"
+
+    - name: "Epsilon budget enforcement"
+      command: "pytest tests/compliance/test_epsilon_ledger.py"
+
+    - name: "Security scan"
+      command: "bandit -r services/"
+
+  integration_tests:
+    - name: "End-to-end dispute flow"
+      command: "pytest tests/e2e/test_dispute_flow.py"
+
+    - name: "Service communication"
+      command: "pytest tests/integration/test_service_mesh.py"
+
+execution_order:
+  phase_1_critical:  # Day 1
+    - task-001  # Fix performance
+    - task-002  # PostgreSQL migration
+    - task-003  # Blockchain deployment
+    - task-004  # Implement missing functions
+
+  phase_2_functionality:  # Day 2
+    - task-005  # IPFS integration
+    - task-006  # Remove mocks
+    - task-007  # PoDP implementation
+
+  phase_3_configuration:  # Day 3
+    - task-008  # Configuration migration
+    - task-009  # Fix fake returns
+    - task-010  # Test suite
+
+  phase_4_cleanup:  # Day 4
+    - task-011  # Empty functions
+    - task-012  # TODOs/FIXMEs
+
+success_criteria:
+  - All 364 issues resolved
+  - Zero mock functions remaining
+  - Performance < 200ms P95 latency
+  - Test coverage > 80%
+  - All PoDP receipts generated
+  - Epsilon budgets enforced
+  - PostgreSQL in production
+  - Blockchain anchoring working
+  - IPFS storage functional
+  - All services communicating

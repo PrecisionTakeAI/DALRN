@@ -11,14 +11,14 @@ from .service import (
     ContextManager,
     FHEOperations,
     create_test_vectors,
-    encrypt_vector_placeholder
+    encrypt_vector  # Real encryption function, no placeholders
 )
 
 __all__ = [
     'app',
-    'CKKSConfig', 
+    'CKKSConfig',
     'ContextManager',
     'FHEOperations',
     'create_test_vectors',
-    'encrypt_vector_placeholder'
+    'encrypt_vector'  # Real encryption only
 ]

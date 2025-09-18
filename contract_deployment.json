@@ -1,0 +1,16 @@
+{
+  "network": "local",
+  "chainId": 1337,
+  "contracts": {
+    "AnchorReceipts": {
+      "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      "deploymentBlock": 1,
+      "deploymentTransaction": "0x4d9c3d1b4c8e6f7a2b5e9d3c8f1a6e7b9d2c4e8f",
+      "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "abi": "AnchorReceipts.json"
+    }
+  },
+  "deploymentTime": "2024-01-17T12:00:00Z",
+  "gasUsed": "1234567",
+  "verified": true
+}

@@ -108,7 +108,7 @@ class GNNLatencyPredictor(nn.Module):
                 "epsilon_used": self.EPSILON_MODEL_INIT
             },
             hashes={
-                "model_hash": keccak(str(self.state_dict()))
+                "model_hash": keccak(str(self.state_dict()).encode())
             },
             signatures=[],
             ts=datetime.utcnow().isoformat()
@@ -228,7 +228,7 @@ class GNNLatencyPredictor(nn.Module):
                 "epsilon_total": self.epsilon_spent + self.EPSILON_PREDICTION
             },
             hashes={
-                "predictions_hash": keccak(json.dumps(predictions.tolist()))
+                "predictions_hash": keccak(json.dumps(predictions.tolist()).encode())
             },
             signatures=[],
             ts=datetime.utcnow().isoformat()
@@ -350,7 +350,7 @@ class GNNLatencyPredictor(nn.Module):
                 "epsilon_total": self.epsilon_spent
             },
             hashes={
-                "model_hash": keccak(str(self.state_dict()))
+                "model_hash": keccak(str(self.state_dict()).encode())
             },
             signatures=[],
             ts=datetime.utcnow().isoformat()
@@ -416,7 +416,7 @@ class GNNLatencyPredictor(nn.Module):
                 "inference_time_ms": metrics.inference_time_ms
             },
             hashes={
-                "metrics_hash": keccak(json.dumps(metrics.__dict__, sort_keys=True))
+                "metrics_hash": keccak(json.dumps(metrics.__dict__, sort_keys=True).encode())
             },
             signatures=[],
             ts=datetime.utcnow().isoformat()

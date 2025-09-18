@@ -1,0 +1,33 @@
+{
+  "contract": {
+    "name": "AnchorReceipts",
+    "version": "1.0.0",
+    "compiler": "solc-0.8.24",
+    "optimization": true,
+    "runs": 200
+  },
+  "features": {
+    "anchorRoot": "Store Merkle roots for dispute receipts",
+    "anchorReceipt": "Store individual receipt hashes",
+    "latestRoot": "Get the most recent root for a dispute",
+    "events": [
+      "RootAnchored",
+      "ReceiptAnchored"
+    ],
+    "gasOptimized": true,
+    "batchSupport": false
+  },
+  "deployment": {
+    "local": {
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "status": "mock",
+      "note": "Use Foundry for actual deployment"
+    }
+  },
+  "files": {
+    "contract": "contracts/AnchorReceipts.sol",
+    "abi": "abi/AnchorReceipts.json",
+    "bytecode": "build/AnchorReceipts.bin",
+    "tests": "test/AnchorReceipts.t.sol"
+  }
+}
