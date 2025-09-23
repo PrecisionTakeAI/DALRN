@@ -1,0 +1,63 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'dalrn-monitor'
+
+scrape_configs:
+  # Gateway metrics
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Redis exporter (if using)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # PostgreSQL exporter (if using)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  # IPFS metrics
+  - job_name: 'ipfs'
+    static_configs:
+      - targets: ['ipfs:5001']
+    metrics_path: '/api/v0/stats/bw'
+
+  # Other microservices
+  - job_name: 'fhe_service'
+    static_configs:
+      - targets: ['fhe:8200']
+    metrics_path: '/metrics'
+
+  - job_name: 'search_service'
+    static_configs:
+      - targets: ['search:8100']
+    metrics_path: '/metrics'
+
+  - job_name: 'negotiation_service'
+    static_configs:
+      - targets: ['negotiation:8300']
+    metrics_path: '/metrics'
+
+  - job_name: 'fl_service'
+    static_configs:
+      - targets: ['fl:8400']
+    metrics_path: '/metrics'
+
+  - job_name: 'agents_service'
+    static_configs:
+      - targets: ['agents:8500']
+    metrics_path: '/metrics'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - "alerts.yml"

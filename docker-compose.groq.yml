@@ -1,0 +1,33 @@
+
+# Groq LPU Services
+services:
+  groq-search:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m services.search.groq_search_service
+    ports:
+      - "9001:9001"
+    env_file:
+      - .env.groq
+    restart: unless-stopped
+
+  groq-fhe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m services.fhe.groq_fhe_service
+    ports:
+      - "9002:9002"
+    env_file:
+      - .env.groq
+    restart: unless-stopped
+
+  # Optional: Groq LPU Proxy for on-premise deployment
+  # groq-proxy:
+  #   image: groq/lpu-proxy:latest
+  #   ports:
+  #     - "9090:9090"
+  #   environment:
+  #     - GROQ_API_KEY=${GROQ_API_KEY}
+  #   restart: unless-stopped

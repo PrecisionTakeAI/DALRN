@@ -60,3 +60,9 @@ pytest-asyncio==0.21.1
 pylint==3.0.3
 mypy==1.8.0
 black==23.12.1
+
+# Groq LPU Dependencies
+groq==0.4.2
+aiohttp==3.9.0
+numpy>=1.24.0
+pydantic>=2.0.0
