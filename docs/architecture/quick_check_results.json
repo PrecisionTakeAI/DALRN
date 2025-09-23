@@ -1,0 +1,54 @@
+{
+  "timestamp": "2025-09-23T14:11:43.372340",
+  "services": {
+    "Gateway": {
+      "service": "Gateway",
+      "port": 8000,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    },
+    "Search": {
+      "service": "Search",
+      "port": 8100,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    },
+    "FHE": {
+      "service": "FHE",
+      "port": 8200,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    },
+    "Negotiation": {
+      "service": "Negotiation",
+      "port": 8300,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    },
+    "FL": {
+      "service": "FL",
+      "port": 8400,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    },
+    "Agents": {
+      "service": "Agents",
+      "port": 8500,
+      "status": "TIMEOUT",
+      "latency_ms": 2000.0,
+      "healthy": false
+    }
+  },
+  "gateway_throughput": null,
+  "summary": {
+    "services_healthy": "0/6",
+    "services_running_pct": 0.0,
+    "avg_health_check_latency_ms": 2000.0,
+    "overall_status": "UNAVAILABLE"
+  }
+}

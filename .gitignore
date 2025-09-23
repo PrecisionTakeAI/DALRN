@@ -108,4 +108,4 @@ out/
 # Local notes
 notes.md
 TODO.md
-scratch/
+scratch/.env.groq

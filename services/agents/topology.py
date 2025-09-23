@@ -18,7 +18,7 @@ from dataclasses import dataclass, asdict
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from common.podp import Receipt, ReceiptChain, keccak
+from services.common.podp import Receipt, ReceiptChain, keccak
 
 
 @dataclass
@@ -257,6 +257,85 @@ class WattsStrogatzTopology:
         self.receipt_chain.add_receipt(exit_receipt)
 
         return self.metrics, exit_receipt
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """
+        Get network metrics in dictionary format (simplified version for service compatibility).
+
+        Returns:
+            Dictionary of network metrics
+        """
+        if self.graph is None:
+            # Generate network if not already done
+            self.generate()
+
+        if self.metrics is None:
+            # Calculate metrics if not already done
+            self.calculate_metrics()
+
+        # Return metrics as dictionary
+        return {
+            "clustering_coefficient": self.metrics.clustering_coefficient,
+            "average_path_length": self.metrics.average_path_length,
+            "diameter": self.metrics.diameter,
+            "density": self.metrics.density,
+            "average_degree": self.metrics.average_degree,
+            "connectivity": self.metrics.connectivity,
+            "small_world_coefficient": self.metrics.small_world_coefficient,
+            "epsilon_used": self.metrics.epsilon_used,
+            "num_nodes": self.N,
+            "num_edges": self.graph.number_of_edges() if self.graph else 0
+        }
+
+    def random_rewire(self, num_rewires: int = 1) -> None:
+        """
+        Randomly rewire edges in the network.
+
+        Args:
+            num_rewires: Number of edges to rewire
+        """
+        if self.graph is None:
+            self.generate()
+
+        edges = list(self.graph.edges())
+        nodes = list(self.graph.nodes())
+
+        for _ in range(min(num_rewires, len(edges))):
+            # Select random edge to remove
+            if edges:
+                edge_to_remove = edges[np.random.randint(len(edges))]
+                self.graph.remove_edge(*edge_to_remove)
+
+                # Add new random edge
+                node1 = nodes[np.random.randint(len(nodes))]
+                node2 = nodes[np.random.randint(len(nodes))]
+                if node1 != node2 and not self.graph.has_edge(node1, node2):
+                    self.graph.add_edge(node1, node2)
+
+        # Recalculate metrics after rewiring
+        self.metrics = None
+
+    def optimize_for_latency(self, predictor=None) -> None:
+        """
+        Optimize network topology for latency (placeholder for now).
+
+        Args:
+            predictor: GNN predictor for latency optimization
+        """
+        if self.graph is None:
+            self.generate()
+
+        # For now, just do a simple optimization by adding edges between high-degree nodes
+        nodes_by_degree = sorted(self.graph.degree(), key=lambda x: x[1], reverse=True)
+        top_nodes = [node for node, degree in nodes_by_degree[:10]]
+
+        for i in range(len(top_nodes)):
+            for j in range(i + 1, min(i + 3, len(top_nodes))):
+                if not self.graph.has_edge(top_nodes[i], top_nodes[j]):
+                    self.graph.add_edge(top_nodes[i], top_nodes[j])
+
+        # Recalculate metrics after optimization
+        self.metrics = None
 
     def export_to_dict(self) -> Tuple[Dict[str, Any], Receipt]:
         """

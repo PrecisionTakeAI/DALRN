@@ -1,0 +1,347 @@
+{
+  "timestamp": "2025-09-23T10:59:00.902225",
+  "services": {
+    "FHE": "REAL",
+    "FL": "REAL",
+    "Search": "REAL",
+    "Database": {
+      "PostgreSQL": "UNAVAILABLE",
+      "Redis": "UNAVAILABLE",
+      "SQLite": "REAL"
+    },
+    "Blockchain": "NO_NODE"
+  },
+  "total_files": 69,
+  "total_functions": 572,
+  "real_implementations": 346,
+  "placeholders": 165,
+  "mock_functions": 0,
+  "broken_imports": 0,
+  "fake_patterns": [
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\epsilon_greedy_optimizer.py",
+      "pattern": "random\\.random\\(",
+      "match": "random.random("
+    },
+    {
+      "file": "services\\agents\\rewiring.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\rewiring.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\agents\\rewiring.py",
+      "pattern": "random\\.random\\(",
+      "match": "random.random("
+    },
+    {
+      "file": "services\\agents\\service.py",
+      "pattern": "random\\.random\\(",
+      "match": "random.random("
+    },
+    {
+      "file": "services\\cache\\connection.py",
+      "pattern": "def \\w+\\([^)]*\\):\\s*pass",
+      "match": "def __exit__(self, exc_type, exc_val, exc_tb):\n        pass"
+    },
+    {
+      "file": "services\\chain\\client.py",
+      "pattern": "time\\.sleep\\(\\d+\\)",
+      "match": "time.sleep(2)"
+    },
+    {
+      "file": "services\\chain\\deploy.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\chain\\deploy.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\chain\\deploy_local.py",
+      "pattern": "#\\s*(TODO|FIXME|HACK|XXX|PLACEHOLDER|MOCK|FAKE)",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\chain\\deploy_local.py",
+      "pattern": "placeholder",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\chain\\deploy_local.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_anchor_data"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_anchor_result"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_anchor_result"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_data"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_anchor_data"
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "match": "mock_data"
+    },
+    {
+      "file": "services\\fhe\\client_example.py",
+      "pattern": "#\\s*(TODO|FIXME|HACK|XXX|PLACEHOLDER|MOCK|FAKE)",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\fhe\\client_example.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\client_example.py",
+      "pattern": "placeholder",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\fhe\\service.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\service.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\service.py",
+      "pattern": "placeholder",
+      "match": "PLACEHOLDER"
+    },
+    {
+      "file": "services\\fhe\\service.py",
+      "pattern": "placeholder",
+      "match": "PLACEHOLDER"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fhe\\__init__.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fl\\cross_silo.py",
+      "pattern": "placeholder",
+      "match": "placeholder"
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "pattern": "#\\s*(TODO|FIXME|HACK|XXX|PLACEHOLDER|MOCK|FAKE)",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "pattern": "placeholder",
+      "match": "Placeholder"
+    },
+    {
+      "file": "services\\fl\\flower_integration.py",
+      "pattern": "test_data",
+      "match": "test_data"
+    },
+    {
+      "file": "services\\fl\\flower_integration.py",
+      "pattern": "test_data",
+      "match": "test_data"
+    },
+    {
+      "file": "services\\fl\\flower_integration.py",
+      "pattern": "random\\.choice\\(",
+      "match": "random.choice("
+    },
+    {
+      "file": "services\\gateway\\app_complex.py",
+      "pattern": "#\\s*(TODO|FIXME|HACK|XXX|PLACEHOLDER|MOCK|FAKE)",
+      "match": "Mock"
+    },
+    {
+      "file": "services\\search\\search_pb2_grpc.py",
+      "pattern": "raise NotImplementedError",
+      "match": "raise NotImplementedError"
+    },
+    {
+      "file": "services\\search\\search_pb2_grpc.py",
+      "pattern": "raise NotImplementedError",
+      "match": "raise NotImplementedError"
+    },
+    {
+      "file": "services\\search\\search_pb2_grpc.py",
+      "pattern": "raise NotImplementedError",
+      "match": "raise NotImplementedError"
+    },
+    {
+      "file": "services\\search\\search_pb2_grpc.py",
+      "pattern": "raise NotImplementedError",
+      "match": "raise NotImplementedError"
+    }
+  ],
+  "suspicious_files": [],
+  "hardcoded_values": [
+    {
+      "file": "services\\chain\\deploy.py",
+      "pattern": "placeholder",
+      "count": 2
+    },
+    {
+      "file": "services\\chain\\deploy_local.py",
+      "pattern": "placeholder",
+      "count": 2
+    },
+    {
+      "file": "services\\chain\\deploy_local.py",
+      "pattern": "example_\\w+",
+      "count": 3
+    },
+    {
+      "file": "services\\chain\\test_client.py",
+      "pattern": "mock_\\w+",
+      "count": 6
+    },
+    {
+      "file": "services\\fhe\\client_example.py",
+      "pattern": "placeholder",
+      "count": 2
+    },
+    {
+      "file": "services\\fhe\\service.py",
+      "pattern": "placeholder",
+      "count": 4
+    },
+    {
+      "file": "services\\fhe\\validate_security.py",
+      "pattern": "placeholder",
+      "count": 9
+    },
+    {
+      "file": "services\\fhe\\__init__.py",
+      "pattern": "placeholder",
+      "count": 1
+    },
+    {
+      "file": "services\\fl\\cross_silo.py",
+      "pattern": "placeholder",
+      "count": 1
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "pattern": "placeholder",
+      "count": 1
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "pattern": "sample_\\w+",
+      "count": 5
+    },
+    {
+      "file": "services\\fl\\flower_integration.py",
+      "pattern": "test_data",
+      "count": 2
+    },
+    {
+      "file": "services\\fl\\opacus_privacy.py",
+      "pattern": "sample_\\w+",
+      "count": 22
+    }
+  ],
+  "todo_fixme_count": 0,
+  "implementation_percentage": 60.49
+}

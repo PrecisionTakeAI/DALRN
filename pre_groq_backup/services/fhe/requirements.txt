@@ -1,0 +1,28 @@
+# FHE Service Requirements
+# CRITICAL: TenSEAL is MANDATORY for this service
+# The service WILL NOT START without real homomorphic encryption
+# NO PLACEHOLDERS OR FAKE ENCRYPTION ALLOWED
+
+# Core dependencies
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.4
+
+# REQUIRED - Homomorphic Encryption (DO NOT MAKE OPTIONAL)
+tenseal==0.3.16  # MANDATORY: CKKS scheme for real encrypted computations
+numpy==1.26.4     # Numerical operations
+
+# Utilities
+python-dotenv==1.0.0
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-benchmark==4.0.0
+httpx==0.27.0  # For testing FastAPI endpoints
+
+# Development
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.0
