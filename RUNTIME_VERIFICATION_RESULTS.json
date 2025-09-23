@@ -1,0 +1,126 @@
+{
+  "services_that_start": [
+    "services\\fhe\\service.py",
+    "services\\gateway\\app.py",
+    "services\\negotiation\\service.py",
+    "services\\search\\service.py"
+  ],
+  "services_that_fail": [
+    {
+      "path": "services\\agents\\service.py",
+      "error": "Import failed: cannot import name 'WattsStrogatzNetwork' from 'agents.topology' (C:\\Users\\luqma\\OneDrive\\Documents\\GitHub\\DALRN\\services\\agents\\topology.py)"
+    },
+    {
+      "path": "services\\fl\\service.py",
+      "error": "Import failed: cannot import name 'EpsilonEntry' from 'fl.eps_ledger' (C:\\Users\\luqma\\OneDrive\\Documents\\GitHub\\DALRN\\services\\fl\\eps_ledger.py)"
+    }
+  ],
+  "functions_that_work": [],
+  "functions_that_fail": [],
+  "imports_that_work": [
+    "services\\fhe\\service.py",
+    "services\\gateway\\app.py",
+    "services\\negotiation\\service.py",
+    "services\\search\\service.py"
+  ],
+  "imports_that_fail": [
+    {
+      "file": "services\\agents\\service.py",
+      "error": "cannot import name 'WattsStrogatzNetwork' from 'agents.topology' (C:\\Users\\luqma\\OneDrive\\Documents\\GitHub\\DALRN\\services\\agents\\topology.py)"
+    },
+    {
+      "file": "services\\fl\\service.py",
+      "error": "cannot import name 'EpsilonEntry' from 'fl.eps_ledger' (C:\\Users\\luqma\\OneDrive\\Documents\\GitHub\\DALRN\\services\\fl\\eps_ledger.py)"
+    }
+  ],
+  "actual_features": [
+    {
+      "file": "services\\agents\\gnn_implementation.py",
+      "fake_patterns": 0,
+      "real_patterns": 9,
+      "verdict": "REAL"
+    },
+    {
+      "file": "services\\agents\\gnn_predictor.py",
+      "fake_patterns": 0,
+      "real_patterns": 7,
+      "verdict": "REAL"
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "fake_patterns": 0,
+      "real_patterns": 5,
+      "verdict": "REAL"
+    }
+  ],
+  "fake_features": [
+    {
+      "file": "services\\agents\\service.py",
+      "fake_patterns": 2,
+      "real_patterns": 0,
+      "verdict": "FAKE"
+    }
+  ],
+  "ml_implementations": [
+    {
+      "file": "services\\agents\\gnn_implementation.py",
+      "fake_patterns": 0,
+      "real_patterns": 9,
+      "verdict": "REAL"
+    },
+    {
+      "file": "services\\agents\\gnn_predictor.py",
+      "fake_patterns": 0,
+      "real_patterns": 7,
+      "verdict": "REAL"
+    },
+    {
+      "file": "services\\agents\\orchestrator.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\agents\\queue_model.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\agents\\rewiring.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\agents\\service.py",
+      "fake_patterns": 2,
+      "real_patterns": 0,
+      "verdict": "FAKE"
+    },
+    {
+      "file": "services\\agents\\topology.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\agents\\__init__.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\database\\models.py",
+      "fake_patterns": 0,
+      "real_patterns": 0,
+      "verdict": "UNKNOWN"
+    },
+    {
+      "file": "services\\fl\\fedavg_flower.py",
+      "fake_patterns": 0,
+      "real_patterns": 5,
+      "verdict": "REAL"
+    }
+  ]
+}

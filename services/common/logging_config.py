@@ -384,7 +384,7 @@ class LoggedOperation:
 """
 # In service startup (e.g., gateway/app.py):
 
-from common.logging_config import configure_service_logging
+from services.common.logging_config_config import configure_service_logging
 
 # Configure logging
 logger, metrics = configure_service_logging(

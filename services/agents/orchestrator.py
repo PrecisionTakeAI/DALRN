@@ -20,16 +20,16 @@ import numpy as np
 import logging
 
 # Import SOAN components
-from topology import WattsStrogatzTopology, NetworkMetrics
-from gnn_predictor import GNNLatencyPredictor, PredictionMetrics
-from queue_model import MM1Queue, QueueMetrics
-from rewiring import EpsilonGreedyRewiring, RewiringMetrics
+from .topology import WattsStrogatzTopology, NetworkMetrics
+from .gnn_predictor import GNNLatencyPredictor, PredictionMetrics
+from .queue_model import MM1Queue, QueueMetrics
+from .rewiring import EpsilonGreedyRewiring, RewiringMetrics
 
 # Import PoDP utilities
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from common.podp import Receipt, ReceiptChain, keccak
+from services.common.podp import Receipt, ReceiptChain, keccak
 
 # Setup logging
 logging.basicConfig(

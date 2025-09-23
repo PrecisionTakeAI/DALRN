@@ -1,0 +1,18 @@
+# Machine Learning Framework Requirements for DALRN Research Compliance
+# These are the EXACT frameworks required by the research papers
+
+# Federated Learning (Currently missing - CRITICAL)
+flwr==1.5.0
+flwr-datasets==0.0.2
+
+# Differential Privacy (Currently missing - CRITICAL)
+opacus==1.4.0
+dp-accounting==0.4.3
+
+# Already installed and working - DO NOT CHANGE
+# torch==2.7.1
+# torch-geometric==2.6.1
+# nashpy==0.0.41
+# tenseal==0.3.16
+# faiss-cpu==1.11.0
+# web3==7.13.0

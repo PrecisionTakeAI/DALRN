@@ -1,4 +1,4 @@
 """Gateway module for DALRN API"""
-from .app import app
+from services.gateway.app import app
 
 __all__ = ["app"]

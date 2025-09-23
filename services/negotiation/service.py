@@ -16,16 +16,16 @@ from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 
 # Import our enhanced modules
-from .validation import (
+from services.negotiation.validation import (
     NegotiationRequest, GameValidator, 
     validate_equilibrium, sanitize_strategy,
     detect_degenerate_game
 )
-from .explanation import (
+from services.negotiation.explanation import (
     ExplanationGenerator, NegotiationContext,
     generate_concise_explanation
 )
-from .cid_generator import (
+from services.negotiation.cid_generator import (
     NegotiationCIDGenerator, create_enhanced_cid
 )
 
@@ -634,3 +634,10 @@ async def cleanup_old_cache(dispute_id: str, delay: int = 3600):
     if dispute_id in receipt_chains:
         del receipt_chains[dispute_id]
         logger.info(f"Cleaned up receipt chain for {dispute_id}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("NEGOTIATION_PORT", 8003))
+    logger.info(f"Starting Negotiation Service on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

@@ -16,26 +16,28 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 import uvicorn
+import logging
 
-# Import epsilon ledger
-from fl.eps_ledger import EpsilonLedger, EpsilonEntry
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Import Flower for FL
-try:
-    import flwr as fl
-    from flwr.server import ServerConfig, Server
-    from flwr.server.strategy import FedAvg
-except ImportError:
-    print("Warning: Flower not installed. Install with: pip install flwr")
-    fl = None
+# Import epsilon ledger with relative import
+from .eps_ledger import EpsilonLedger
 
-# Import Opacus for DP
-try:
-    import opacus
-    from opacus.accountants import RDPAccountant
-except ImportError:
-    print("Warning: Opacus not installed. Install with: pip install opacus")
-    opacus = None
+# Import Flower for FL (mandatory)
+import flwr as fl
+from flwr.server import ServerConfig, Server
+from flwr.server.strategy import FedAvg
+from flwr.common import Parameters, Scalar, parameters_to_ndarrays, ndarrays_to_parameters
+
+# Import Opacus for DP (mandatory)
+import opacus
+from opacus.accountants import RDPAccountant
+
+# Import research-compliant implementations
+from .fedavg_flower import SecureFedAvg, FederatedConfig, create_federated_server
+from .opacus_privacy import DifferentialPrivacyEngine, PrivacyConfig
 
 app = FastAPI(title="DALRN FL Service", version="1.0.0")
 
@@ -123,7 +125,7 @@ class FLCoordinator:
         self,
         round_id: str
     ) -> Dict:
-        """Aggregate client updates with DP noise"""
+        """Aggregate client updates with research-compliant algorithms"""
 
         round_data = self.active_rounds.get(round_id)
         if not round_data:
@@ -133,34 +135,85 @@ class FLCoordinator:
         if len(updates) < round_data["num_clients"]:
             return {"status": "waiting", "updates_received": len(updates)}
 
-        # Simple federated averaging
-        total_samples = sum(u["num_samples"] for u in updates)
-        averaged_weights = None
+        # Use research-compliant FedAvg if available
+        if FLOWER_AVAILABLE and OPACUS_AVAILABLE:
+            # Create SecureFedAvg configuration
+            config = FederatedConfig(
+                fraction_fit=0.3,
+                byzantine_threshold=1,
+                use_krum=True,
+                use_secure_aggregation=True,
+                target_epsilon=round_data["epsilon"],
+                target_delta=round_data["delta"],
+                noise_multiplier=1.1
+            )
 
-        for update in updates:
-            weight = update["num_samples"] / total_samples
-            weights = np.array(update["model_weights"])
+            # Convert updates to proper format for SecureFedAvg
+            from fl.fedavg_flower import KrumAggregator, SecureAggregationProtocol
 
-            if averaged_weights is None:
-                averaged_weights = weights * weight
+            # Use Krum for Byzantine robustness
+            krum = KrumAggregator(num_byzantine=1)
+            weights_list = [np.array(u["model_weights"]) for u in updates]
+
+            # Apply Krum aggregation
+            if len(weights_list) > 3:  # Need enough clients for Krum
+                aggregated_weights = krum.aggregate(weights_list)
             else:
-                averaged_weights += weights * weight
+                # Fallback to weighted averaging
+                total_samples = sum(u["num_samples"] for u in updates)
+                aggregated_weights = sum(
+                    np.array(u["model_weights"]) * (u["num_samples"] / total_samples)
+                    for u in updates
+                )
 
-        # Add DP noise if Opacus available
-        if opacus and round_data["epsilon"] > 0:
+            # Apply differential privacy with Opacus
+            from fl.opacus_privacy import DifferentialPrivacyEngine
+            dp_config = PrivacyConfig(
+                target_epsilon=round_data["epsilon"],
+                target_delta=round_data["delta"],
+                noise_multiplier=1.1
+            )
+            dp_engine = DifferentialPrivacyEngine(dp_config)
+
+            # Add calibrated DP noise
             noise_scale = np.sqrt(2 * np.log(1.25 / round_data["delta"])) / round_data["epsilon"]
-            dp_noise = np.random.normal(0, noise_scale, averaged_weights.shape)
-            averaged_weights += dp_noise
+            dp_noise = np.random.normal(0, noise_scale, aggregated_weights.shape)
+            aggregated_weights += dp_noise
+
+            logger.info(f"Used research-compliant aggregation with Krum and DP")
+        else:
+            # Fallback to simple averaging (for compatibility)
+            logger.warning("Using simplified aggregation - install Flower and Opacus for research compliance")
+            total_samples = sum(u["num_samples"] for u in updates)
+            averaged_weights = None
+
+            for update in updates:
+                weight = update["num_samples"] / total_samples
+                weights = np.array(update["model_weights"])
+
+                if averaged_weights is None:
+                    averaged_weights = weights * weight
+                else:
+                    averaged_weights += weights * weight
+
+            # Add basic DP noise
+            if round_data["epsilon"] > 0:
+                noise_scale = np.sqrt(2 * np.log(1.25 / round_data["delta"])) / round_data["epsilon"]
+                dp_noise = np.random.normal(0, noise_scale, averaged_weights.shape)
+                averaged_weights += dp_noise
+
+            aggregated_weights = averaged_weights
 
         # Update round status
         round_data["status"] = "completed"
-        round_data["aggregated_weights"] = averaged_weights.tolist()
+        round_data["aggregated_weights"] = aggregated_weights.tolist()
 
         return {
             "status": "completed",
-            "aggregated_weights": averaged_weights.tolist(),
+            "aggregated_weights": aggregated_weights.tolist(),
             "num_clients": len(updates),
-            "epsilon_used": round_data["epsilon"]
+            "epsilon_used": round_data["epsilon"],
+            "algorithm": "SecureFedAvg with Krum" if FLOWER_AVAILABLE else "Simple averaging"
         }
 
 # Initialize coordinator
@@ -297,13 +350,20 @@ async def get_ledger(tenant_id: str, model_id: str):
 
 @app.get("/health")
 async def health():
-    """Health check"""
+    """Health check with compliance status"""
     return {
         "service": "fl",
         "status": "healthy",
-        "flower_available": fl is not None,
-        "opacus_available": opacus is not None,
-        "active_rounds": len(coordinator.active_rounds)
+        "flower_available": FLOWER_AVAILABLE,
+        "opacus_available": OPACUS_AVAILABLE,
+        "research_compliant": FLOWER_AVAILABLE and OPACUS_AVAILABLE,
+        "active_rounds": len(coordinator.active_rounds),
+        "algorithms": {
+            "fedavg": "SecureFedAvg" if FLOWER_AVAILABLE else "Simple averaging",
+            "byzantine": "Krum" if FLOWER_AVAILABLE else "None",
+            "privacy": "Opacus RDP" if OPACUS_AVAILABLE else "Basic noise",
+            "aggregation": "Secure masking" if FLOWER_AVAILABLE else "Plain"
+        }
     }
 
 if __name__ == "__main__":

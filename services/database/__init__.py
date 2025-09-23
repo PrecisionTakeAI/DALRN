@@ -1,5 +1,5 @@
 """Database module for DALRN"""
-from .models import (
+from services.database.models import (
     DatabaseService,
     Dispute,
     Agent,

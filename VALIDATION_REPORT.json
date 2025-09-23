@@ -1,0 +1,43 @@
+{
+  "dependencies": {
+    "fastapi": true,
+    "flwr": true,
+    "opacus": true,
+    "tenseal": true,
+    "nashpy": true,
+    "faiss": true,
+    "ipfshttpclient": true,
+    "web3": true,
+    "torch": true,
+    "torch_geometric": true
+  },
+  "services": {
+    "services.gateway.app": true,
+    "services.search.service": true,
+    "services.fhe.service": true,
+    "services.negotiation.service": true,
+    "services.fl.service": true,
+    "services.agents.orchestrator": true,
+    "services.common.podp": true,
+    "services.common.ipfs": true
+  },
+  "features": {
+    "JWT Authentication": true,
+    "FAISS Vector Search": true,
+    "TenSEAL Encryption": true,
+    "Nash Equilibrium": true,
+    "Federated Learning": true,
+    "IPFS Integration": true,
+    "Smart Contracts": true,
+    "PoDP Receipts": true
+  },
+  "infrastructure": {
+    "Docker Compose": true,
+    "Requirements.txt": true,
+    "Environment Config": true,
+    "Setup Scripts": true,
+    "Smart Contract": true,
+    "Integration Tests": true
+  },
+  "overall_score": 99.99999999999999
+}

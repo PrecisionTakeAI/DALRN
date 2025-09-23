@@ -23,7 +23,7 @@ from dataclasses import dataclass
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from common.podp import Receipt, ReceiptChain, keccak
+from services.common.podp import Receipt, ReceiptChain, keccak
 
 
 @dataclass

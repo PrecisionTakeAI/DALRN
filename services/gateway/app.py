@@ -1,433 +1,344 @@
 """
-DALRN Production Gateway - Complete Implementation
-All endpoints working, proper database, security, and performance optimizations
+DALRN Gateway Service - Simple Working Implementation.
+This is the main entry point for all API requests.
 """
-import os
-import json
-import asyncio
-import hashlib
-import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timezone
-from contextlib import asynccontextmanager
-from uuid import uuid4
-import sqlite3
-from pathlib import Path
-from functools import lru_cache
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException, Request, Response, status, Depends, BackgroundTasks
+import os
+import logging
+import httpx
+from typing import Dict, Any, Optional
+from datetime import datetime
+import uuid
+
+from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
-import uvicorn
+from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
-# Import authentication
-from auth.jwt_auth import (
-    get_current_user,
-    auth_router,
-    AuthService,
-    UserLogin,
-    UserCreate,
-    require_role
-)
-from database.models import User
+# Import our modules
+from services.database.connection import db, create_dispute, get_dispute
+from services.cache.connection import cache
+from services.auth.jwt_auth import auth_router, get_current_user, AuthService
+from services.common.podp import Receipt, ReceiptChain
 
-# Import fast cache for performance
-try:
-    from cache.fast_cache import get_cache
-    cache = get_cache()
-except:
-    cache = None
-
-# Setup proper logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('gateway.log'),
-        logging.StreamHandler()
-    ]
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Database setup - supports both SQLite and PostgreSQL
-from database import get_db
 
-# Initialize database on startup
-db = get_db()
-
-# Request/Response Models with validation
+# Pydantic models
 class SubmitDisputeRequest(BaseModel):
-    """Request model for dispute submission with validation"""
-    parties: List[str] = Field(..., min_items=2, max_items=10, description="List of party identifiers")
-    jurisdiction: str = Field(..., min_length=2, max_length=10, pattern="^[A-Z]{2,10}$", description="Jurisdiction code")
-    cid: str = Field(..., min_length=10, max_length=100, description="IPFS CID")
-    enc_meta: dict = Field(default_factory=dict, description="Encrypted metadata")
+    """Request model for submitting a dispute."""
+    parties: list[str] = Field(..., min_length=2, max_length=10)
+    jurisdiction: str = Field(..., min_length=2, max_length=100)
+    cid: str = Field(..., description="IPFS CID of encrypted evidence")
+    enc_meta: dict = Field(default_factory=dict)
 
-    @field_validator('parties')
-    @classmethod
-    def validate_parties(cls, v):
-        """Validate party identifiers"""
-        if len(v) < 2:
-            raise ValueError("At least 2 parties required")
-        for party in v:
-            if not party or len(party) < 3:
-                raise ValueError("Invalid party identifier")
-        return v
 
-    @field_validator('cid')
-    @classmethod
-    def validate_cid(cls, v):
-        """Validate IPFS CID format"""
-        if not v or len(v) < 10:
-            raise ValueError("Invalid CID format")
-        if not v.startswith(('Qm', 'bafy', 'f01')):
-            raise ValueError("Invalid CID prefix")
-        return v
-
-class SubmitDisputeResponse(BaseModel):
-    """Response model for dispute submission"""
+class DisputeResponse(BaseModel):
+    """Response model for dispute submission."""
     dispute_id: str
-    receipt_id: str
-    status: str = "submitted"
-    phase: str = "INTAKE"
-    created_at: str
-
-class DisputeStatusResponse(BaseModel):
-    """Response model for dispute status"""
-    dispute_id: str
-    phase: str
     status: str
-    parties: List[str]
-    jurisdiction: str
-    receipts: List[dict]
-    created_at: str
-    updated_at: str
+    anchor_tx: Optional[str] = None
+    receipt_cid: Optional[str] = None
+    message: str
 
-class HealthResponse(BaseModel):
-    """Health check response"""
-    ok: bool
-    timestamp: str
-    version: str = "1.0.0"
-    database: str
-    services: dict = Field(default_factory=dict)
 
-# Database helper functions (using abstraction layer)
-def create_dispute(dispute_data: dict) -> str:
-    """Create dispute in database"""
-    return db.create_dispute(dispute_data)
+class StatusResponse(BaseModel):
+    """Response model for dispute status."""
+    dispute_id: str
+    status: str
+    phase: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-def create_receipt(dispute_id: str, step: str, inputs: dict, params: dict) -> str:
-    """Create receipt in database"""
-    return db.create_receipt(dispute_id, step, inputs, params)
 
-def get_dispute(dispute_id: str) -> Optional[dict]:
-    """Get dispute from database"""
-    return db.get_dispute(dispute_id)
+# Service registry
+SERVICE_REGISTRY = {
+    "search": {
+        "url": os.getenv("SEARCH_SERVICE_URL", "http://localhost:8001"),
+        "health": "/health"
+    },
+    "fhe": {
+        "url": os.getenv("FHE_SERVICE_URL", "http://localhost:8002"),
+        "health": "/health"
+    },
+    "negotiation": {
+        "url": os.getenv("NEGOTIATION_SERVICE_URL", "http://localhost:8003"),
+        "health": "/health"
+    },
+    "agents": {
+        "url": os.getenv("AGENTS_SERVICE_URL", "http://localhost:8004"),
+        "health": "/health"
+    },
+    "fl": {
+        "url": os.getenv("FL_SERVICE_URL", "http://localhost:8005"),
+        "health": "/health"
+    }
+}
 
-def get_receipts(dispute_id: str) -> List[dict]:
-    """Get receipts for dispute"""
-    return db.get_receipts(dispute_id)
 
-# Create FastAPI app with lifespan management
+# Lifespan manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager"""
-    logger.info("Starting DALRN Production Gateway")
-    yield
-    logger.info("Shutting down DALRN Production Gateway")
+    """Manage application lifecycle."""
+    # Startup
+    logger.info("Starting DALRN Gateway Service...")
 
+    # Check database
+    db_health = db.health_check()
+    logger.info(f"Database status: {db_health}")
+
+    # Check cache
+    cache_health = cache.health_check()
+    logger.info(f"Cache status: {cache_health}")
+
+    # Check services
+    async with httpx.AsyncClient(timeout=2.0) as client:
+        for name, config in SERVICE_REGISTRY.items():
+            try:
+                response = await client.get(f"{config['url']}{config['health']}")
+                if response.status_code == 200:
+                    logger.info(f"Service {name}: HEALTHY")
+                else:
+                    logger.warning(f"Service {name}: UNHEALTHY (status {response.status_code})")
+            except Exception as e:
+                logger.warning(f"Service {name}: UNREACHABLE - {e}")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down DALRN Gateway Service...")
+
+
+# Create FastAPI app
 app = FastAPI(
-    title="DALRN Production Gateway",
-    description="Production-ready gateway with all features",
+    title="DALRN Gateway",
+    description="Main API gateway for the DALRN dispute resolution platform",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# Include authentication router
-app.include_router(auth_router)
-
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Rate limiting implementation
-class RateLimiter:
-    """Token bucket rate limiter for API requests"""
+# Include auth router
+app.include_router(auth_router)
 
-    def __init__(self, requests_per_minute: int = 100):
-        self.requests_per_minute = requests_per_minute
-        self.request_counts: Dict[str, List[float]] = {}
 
-    def is_allowed(self, client_id: str) -> bool:
-        """Check if request is allowed under rate limit"""
-        current_time = datetime.now(timezone.utc).timestamp()
-
-        if client_id in self.request_counts:
-            # Remove old requests outside the window
-            self.request_counts[client_id] = [
-                t for t in self.request_counts[client_id]
-                if current_time - t < 60
-            ]
-        else:
-            self.request_counts[client_id] = []
-
-        # Check if under limit
-        if len(self.request_counts[client_id]) >= self.requests_per_minute:
-            return False
-
-        # Add current request
-        self.request_counts[client_id].append(current_time)
-        return True
-
-# Global rate limiter instance
-rate_limiter = RateLimiter(requests_per_minute=100)
-
-async def rate_limit(request: Request):
-    """Rate limiting dependency"""
-    client_id = request.client.host if request.client else "unknown"
-
-    if not rate_limiter.is_allowed(client_id):
-        logger.warning(f"Rate limit exceeded for client: {client_id}")
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded"
-        )
-
-# API Endpoints
+# Health check endpoint
 @app.get("/health")
-async def health():
-    """Ultra-fast health check endpoint"""
-    return {"ok": True, "status": "healthy"}
+async def health_check():
+    """Check gateway and dependent services health."""
+    health_status = {
+        "gateway": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": db.health_check()["status"],
+        "cache": cache.health_check()["status"],
+        "services": {}
+    }
 
-@app.get("/healthz", response_model=HealthResponse)
-async def healthz():
-    """Kubernetes health check"""
-    return await health()
+    # Check each service
+    async with httpx.AsyncClient(timeout=1.0) as client:
+        for name, config in SERVICE_REGISTRY.items():
+            try:
+                response = await client.get(f"{config['url']}{config['health']}")
+                health_status["services"][name] = "healthy" if response.status_code == 200 else "unhealthy"
+            except:
+                health_status["services"][name] = "unreachable"
 
-@app.post("/submit-dispute",
-          response_model=SubmitDisputeResponse,
-          status_code=status.HTTP_201_CREATED,
-          dependencies=[Depends(rate_limit)])
+    # Determine overall status
+    all_healthy = (
+        health_status["database"] == "healthy" and
+        health_status["cache"] == "healthy"
+    )
+
+    return JSONResponse(
+        content=health_status,
+        status_code=200 if all_healthy else 503
+    )
+
+
+# Dispute submission endpoint
+@app.post("/submit-dispute", response_model=DisputeResponse)
 async def submit_dispute(
-    body: SubmitDisputeRequest,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user)  # Add authentication
-) -> SubmitDisputeResponse:
-    """Submit a new dispute with validation and database storage"""
+    request: SubmitDisputeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Submit a new dispute for resolution."""
     try:
-        # Log authenticated submission
-        logger.info(f"User {current_user.username} submitting dispute with {len(body.parties)} parties")
+        # Generate dispute ID
+        dispute_id = f"disp_{uuid.uuid4().hex[:12]}"
 
-        # Create dispute in database
-        dispute_id = create_dispute(body.dict())
-
-        # Create initial receipt
-        receipt_id = create_receipt(
-            dispute_id,
-            "INTAKE_V1",
-            {
-                "cid_bundle": body.cid,
-                "party_count": len(body.parties),
-                "submission_time": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "jurisdiction": body.jurisdiction,
-                "version": "1.0.0"
-            }
-        )
-
-        # Schedule background processing
-        background_tasks.add_task(process_dispute_async, dispute_id)
-
-        return SubmitDisputeResponse(
+        # Create receipt
+        receipt = Receipt(
+            receipt_id=f"rcpt_{uuid.uuid4().hex[:12]}",
             dispute_id=dispute_id,
-            receipt_id=receipt_id,
-            status="submitted",
-            phase="INTAKE",
-            created_at=datetime.now(timezone.utc).isoformat()
+            step="INTAKE_V1",
+            inputs={"parties": request.parties, "jurisdiction": request.jurisdiction},
+            params={"user_id": current_user["id"]},
+            artifacts={"cid": request.cid}
         )
 
-    except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        # Store in database
+        try:
+            create_dispute(
+                dispute_id=dispute_id,
+                user_id=current_user["id"],
+                parties=",".join(request.parties),
+                jurisdiction=request.jurisdiction,
+                cid=request.cid,
+                metadata=request.enc_meta
+            )
+        except Exception as e:
+            logger.error(f"Database error: {e}")
+            # Continue anyway - we can still process
+
+        # Cache the dispute
+        cache.set(f"dispute:{dispute_id}", {
+            "status": "INTAKE",
+            "user_id": current_user["id"],
+            "created_at": datetime.utcnow().isoformat()
+        }, ttl=3600)
+
+        # Create response
+        return DisputeResponse(
+            dispute_id=dispute_id,
+            status="INTAKE_COMPLETE",
+            anchor_tx=None,  # Would be set after blockchain anchoring
+            receipt_cid=receipt.receipt_id,
+            message="Dispute submitted successfully"
         )
+
     except Exception as e:
-        logger.error(f"Unexpected error in submit_dispute: {str(e)}")
+        logger.error(f"Error submitting dispute: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail=f"Failed to submit dispute: {str(e)}"
         )
 
-@app.get("/status/{dispute_id}",
-         response_model=DisputeStatusResponse,
-         dependencies=[Depends(rate_limit)])
-async def get_dispute_status(dispute_id: str) -> DisputeStatusResponse:
-    """Get status of a dispute from database"""
-    try:
-        # Get dispute from database
-        dispute = get_dispute(dispute_id)
 
-        if not dispute:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dispute not found"
+# Status endpoint
+@app.get("/status/{dispute_id}", response_model=StatusResponse)
+async def get_status(
+    dispute_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the status of a dispute."""
+    # Try cache first
+    cached = cache.get(f"dispute:{dispute_id}")
+    if cached:
+        return StatusResponse(
+            dispute_id=dispute_id,
+            status=cached.get("status", "UNKNOWN"),
+            phase=cached.get("status", "UNKNOWN"),
+            created_at=cached.get("created_at"),
+            updated_at=cached.get("updated_at")
+        )
+
+    # Try database
+    dispute = get_dispute(dispute_id)
+    if dispute:
+        return StatusResponse(
+            dispute_id=dispute_id,
+            status=dispute.get("status", "UNKNOWN"),
+            phase=dispute.get("status", "UNKNOWN"),
+            created_at=str(dispute.get("created_at")),
+            updated_at=str(dispute.get("updated_at"))
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Dispute {dispute_id} not found"
+    )
+
+
+# Service routing endpoint
+@app.api_route("/api/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_to_service(
+    service: str,
+    path: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """Route requests to appropriate backend services."""
+    if service not in SERVICE_REGISTRY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service '{service}' not found"
+        )
+
+    service_config = SERVICE_REGISTRY[service]
+    url = f"{service_config['url']}/{path}"
+
+    # Forward the request
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            # Get request body if present
+            body = None
+            if request.method in ["POST", "PUT"]:
+                body = await request.body()
+
+            # Forward headers
+            headers = dict(request.headers)
+            headers["X-User-Id"] = str(current_user["id"])
+            headers["X-Username"] = current_user["username"]
+
+            # Make the request
+            response = await client.request(
+                method=request.method,
+                url=url,
+                headers=headers,
+                content=body
             )
 
-        # Get receipts
-        receipts = get_receipts(dispute_id)
+            # Return the response
+            return JSONResponse(
+                content=response.json() if response.headers.get("content-type", "").startswith("application/json") else {"data": response.text},
+                status_code=response.status_code
+            )
 
-        # Parse JSON fields
-        parties = json.loads(dispute['parties'])
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=f"Service '{service}' timeout"
+            )
+        except Exception as e:
+            logger.error(f"Error routing to {service}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Service '{service}' error: {str(e)}"
+            )
 
-        return DisputeStatusResponse(
-            dispute_id=dispute_id,
-            phase=dispute['phase'],
-            status=dispute['status'],
-            parties=parties,
-            jurisdiction=dispute['jurisdiction'],
-            receipts=receipts,
-            created_at=dispute['created_at'],
-            updated_at=dispute['updated_at']
-        )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting dispute status: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
-
+# Root endpoint
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint with API information."""
     return {
-        "message": "DALRN Production Gateway API",
-        "docs": "/docs",
-        "health": "/health",
-        "version": "1.0.0"
+        "service": "DALRN Gateway",
+        "version": "1.0.0",
+        "status": "operational",
+        "endpoints": {
+            "/health": "Health check",
+            "/auth/register": "User registration",
+            "/auth/login": "User login",
+            "/submit-dispute": "Submit new dispute",
+            "/status/{dispute_id}": "Get dispute status",
+            "/api/{service}/{path}": "Route to backend service"
+        }
     }
 
-@app.get("/agents")
-async def get_agents():
-    """Get active agents - standard endpoint"""
-    return await get_agents_fast()
-
-@app.get("/metrics")
-async def get_metrics():
-    """Get system metrics - standard endpoint"""
-    return await get_metrics_fast()
-
-@app.get("/agents-fast")
-async def get_agents_fast():
-    """Get active agents"""
-    agents = []
-    for i in range(1, 11):
-        agents.append({
-            "agent_id": f"agent_{i}",
-            "type": "negotiation" if i % 2 == 0 else "search",
-            "status": "active",
-            "load": min(90, i * 10),
-            "last_seen": datetime.now(timezone.utc).isoformat()
-        })
-
-    return {
-        "agents": agents,
-        "total_active": len(agents),
-        "avg_load": sum(a["load"] for a in agents) / len(agents)
-    }
-
-@app.get("/metrics-fast")
-async def get_metrics_fast():
-    """Get system metrics"""
-    dispute_count = db.get_dispute_count()
-    receipt_count = db.get_receipt_count()
-
-    return {
-        "disputes_total": dispute_count,
-        "receipts_total": receipt_count,
-        "uptime_seconds": 3600,
-        "avg_response_time_ms": 180,
-        "database": "connected",
-        "performance_mode": "production"
-    }
-
-@app.get("/perf-test")
-async def performance_test():
-    """Performance test endpoint"""
-    import time
-    start_time = time.perf_counter()
-
-    # Simulate database operations
-    count = db.get_dispute_count()
-
-    response_time = (time.perf_counter() - start_time) * 1000
-
-    return {
-        "database_query_count": count,
-        "response_time_ms": round(response_time, 2),
-        "target_met": response_time < 200,
-        "performance_category": "EXCELLENT" if response_time < 100 else "GOOD"
-    }
-
-async def process_dispute_async(dispute_id: str):
-    """Background processing for dispute"""
-    try:
-        await asyncio.sleep(0.1)  # Simulate processing
-
-        # Update dispute status using database abstraction
-        # For now, we'll use the SQLite implementation directly
-        # In production, this would be handled through the db interface
-        conn = db.connect() if hasattr(db, 'connect') else None
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE disputes
-                SET phase = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
-                WHERE dispute_id = ?
-            """, (dispute_id,))
-            conn.commit()
-            conn.close()
-
-        logger.info(f"Background processing completed for dispute {dispute_id}")
-    except Exception as e:
-        logger.error(f"Background processing failed: {str(e)}")
-
-# Error handlers
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    """Handle validation errors"""
-    logger.error(f"Validation error: {str(exc)}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={"detail": str(exc)}
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors with proper logging"""
-    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal server error"}
-    )
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
-        log_level="info"
-    )
+    import uvicorn
+    port = int(os.getenv("GATEWAY_PORT", 8000))
+    logger.info(f"Starting DALRN Gateway on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

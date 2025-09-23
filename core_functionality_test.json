@@ -1,0 +1,9 @@
+{
+  "federated_learning": "IMPORT_ERROR: cannot import name 'EpsilonEntry' from 'fl.eps_ledger' (C:\\Users\\luqma\\OneDrive\\Documents\\GitHub\\DAL",
+  "gnn_training": "REAL_PYTORCH_GEOMETRIC_GNN",
+  "differential_privacy": "REAL_OPACUS_WITH_RDP",
+  "blockchain": "HAS_WEB3_CONNECTION_CHECK",
+  "vector_search": "REAL_FAISS_IMPLEMENTATION",
+  "homomorphic_encryption": "REAL_TENSEAL_CKKS",
+  "negotiation": "REAL_NASHPY_IMPLEMENTATION"
+}

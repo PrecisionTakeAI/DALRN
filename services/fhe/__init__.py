@@ -5,7 +5,7 @@ This module provides privacy-preserving dot-product operations using
 fully homomorphic encryption.
 """
 
-from .service import (
+from services.fhe.service import (
     app,
     CKKSConfig,
     ContextManager,

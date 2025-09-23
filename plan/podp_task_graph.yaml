@@ -1,0 +1,504 @@
+# DALRN PoDP-Compliant Task Graph
+# Version: 1.0
+# Date: 2025-09-18
+# Purpose: Complete implementation roadmap with PoDP and epsilon budget enforcement
+
+metadata:
+  total_epsilon_budget: 4.0
+  podp_compliance: mandatory
+  target_completion: "100% research compliance"
+  timeline: "4 weeks"
+
+# Phase 1: Critical Algorithm Implementation (Week 1)
+phase_1_critical_algorithms:
+  - id: task-001
+    name: "Implement Q-Learning Optimizer"
+    epsilon_budget: 0.001
+    dependencies: []
+    podp_receipts:
+      - init_q_table_receipt
+      - update_function_receipt
+      - convergence_receipt
+    implementation:
+      file: "services/agents/rewiring.py"
+      class: "QLearningOptimizer"
+      parameters:
+        alpha: 0.1
+        gamma: 0.95
+      validation:
+        - "Q-value convergence test"
+        - "Reward maximization verification"
+    estimated_hours: 16
+
+  - id: task-002
+    name: "Add Q-Learning Integration"
+    epsilon_budget: 0.001
+    dependencies: [task-001]
+    podp_receipts:
+      - integration_receipt
+      - orchestration_receipt
+    implementation:
+      file: "services/agents/orchestrator.py"
+      method: "integrate_q_learning"
+    estimated_hours: 8
+
+  - id: task-003
+    name: "Implement Key Rotation Manager"
+    epsilon_budget: 0.002
+    dependencies: []
+    podp_receipts:
+      - key_generation_receipt
+      - rotation_trigger_receipt
+      - reencryption_receipt
+    implementation:
+      file: "services/fhe/key_rotation.py"
+      class: "KeyRotationManager"
+      parameters:
+        rotation_period: 2592000  # 30 days in seconds
+        operation_limit: 10000
+    estimated_hours: 16
+
+  - id: task-004
+    name: "Integrate Automatic Key Rotation"
+    epsilon_budget: 0.001
+    dependencies: [task-003]
+    podp_receipts:
+      - rotation_check_receipt
+      - context_update_receipt
+    implementation:
+      file: "services/fhe/service.py"
+      integration_points:
+        - "check_rotation_on_operation"
+        - "schedule_rotation_job"
+    estimated_hours: 8
+
+# Phase 2: Protocol Enhancement (Week 2)
+phase_2_protocol_enhancement:
+  - id: task-005
+    name: "Implement Pairwise Mask Generation"
+    epsilon_budget: 0.003
+    dependencies: []
+    podp_receipts:
+      - mask_generation_receipt
+      - seed_sharing_receipt
+      - mask_validation_receipt
+    implementation:
+      file: "services/fl/secure_aggregation.py"
+      class: "PairwiseMaskGenerator"
+      crypto_requirements:
+        - "Shared seed derivation"
+        - "Deterministic RNG"
+        - "Mask cancellation proof"
+    estimated_hours: 12
+
+  - id: task-006
+    name: "Implement Shamir Secret Sharing"
+    epsilon_budget: 0.004
+    dependencies: []
+    podp_receipts:
+      - share_generation_receipt
+      - threshold_validation_receipt
+      - reconstruction_receipt
+    implementation:
+      file: "services/fl/secure_aggregation.py"
+      class: "ShamirSecretSharing"
+      parameters:
+        threshold: 0.67  # 2/3 of clients
+        prime: 2**127 - 1
+    estimated_hours: 16
+
+  - id: task-007
+    name: "Complete Secure Aggregation Protocol"
+    epsilon_budget: 0.005
+    dependencies: [task-005, task-006]
+    podp_receipts:
+      - protocol_init_receipt
+      - aggregation_receipt
+      - dropout_handling_receipt
+    implementation:
+      file: "services/fl/secure_aggregation.py"
+      class: "SecureAggregationProtocol"
+      validation:
+        - "Mask cancellation test"
+        - "Dropout recovery test"
+        - "Byzantine resilience test"
+    estimated_hours: 12
+
+  - id: task-008
+    name: "Replace Simulated with Real Protocol"
+    epsilon_budget: 0.002
+    dependencies: [task-007]
+    podp_receipts:
+      - migration_receipt
+      - validation_receipt
+    implementation:
+      file: "services/fl/service.py"
+      changes:
+        - "Remove simulated masking"
+        - "Integrate real protocol"
+        - "Add protocol metrics"
+    estimated_hours: 8
+
+# Phase 3: Performance Optimization (Week 2-3)
+phase_3_performance:
+  - id: task-009
+    name: "Implement GPU-Accelerated FAISS"
+    epsilon_budget: 0.001
+    dependencies: []
+    podp_receipts:
+      - gpu_init_receipt
+      - index_transfer_receipt
+      - performance_receipt
+    implementation:
+      file: "services/search/gpu_acceleration.py"
+      function: "initialize_gpu_index"
+      gpu_config:
+        device: 0
+        use_float16: true
+        precomputed_table_size: 12
+    estimated_hours: 8
+
+  - id: task-010
+    name: "Create Performance Benchmark Suite"
+    epsilon_budget: 0.001
+    dependencies: []
+    podp_receipts:
+      - benchmark_init_receipt
+      - metric_collection_receipt
+      - slo_validation_receipt
+    implementation:
+      file: "tests/benchmarks/performance_suite.py"
+      class: "PerformanceBenchmark"
+      metrics:
+        - "latency_percentiles"
+        - "throughput_qps"
+        - "accuracy_recall"
+    estimated_hours: 16
+
+  - id: task-011
+    name: "Implement SLO Validation"
+    epsilon_budget: 0.001
+    dependencies: [task-010]
+    podp_receipts:
+      - slo_check_receipt
+      - violation_alert_receipt
+    implementation:
+      file: "tests/benchmarks/slo_validation.py"
+      slos:
+        search_p95_ms: 600
+        fhe_p95_s: 30
+        negotiation_p95_s: 5
+        disputes_per_day: 100000
+    estimated_hours: 8
+
+# Phase 4: Production Configuration (Week 3)
+phase_4_production:
+  - id: task-012
+    name: "Create Production Environment Configuration"
+    epsilon_budget: 0.001
+    dependencies: []
+    podp_receipts:
+      - config_validation_receipt
+      - secret_encryption_receipt
+    implementation:
+      file: "infra/production/production.env"
+      configurations:
+        - "Mainnet blockchain endpoints"
+        - "IPFS cluster configuration"
+        - "Database connection pooling"
+        - "Redis cluster setup"
+    estimated_hours: 8
+
+  - id: task-013
+    name: "Create Kubernetes Manifests"
+    epsilon_budget: 0.001
+    dependencies: [task-012]
+    podp_receipts:
+      - manifest_generation_receipt
+      - resource_allocation_receipt
+    implementation:
+      directory: "infra/kubernetes/"
+      manifests:
+        - "deployment.yaml"
+        - "service.yaml"
+        - "configmap.yaml"
+        - "secret.yaml"
+        - "hpa.yaml"
+    estimated_hours: 12
+
+  - id: task-014
+    name: "Configure Production Monitoring"
+    epsilon_budget: 0.001
+    dependencies: [task-012]
+    podp_receipts:
+      - prometheus_config_receipt
+      - grafana_dashboard_receipt
+      - alert_rules_receipt
+    implementation:
+      directory: "infra/monitoring/"
+      components:
+        - "prometheus.yml"
+        - "alert_rules.yml"
+        - "dashboards/*.json"
+    estimated_hours: 8
+
+# Phase 5: Compliance Validation (Week 4)
+phase_5_compliance:
+  - id: task-015
+    name: "Implement Algorithm Compliance Validator"
+    epsilon_budget: 0.002
+    dependencies: [task-001, task-003, task-007]
+    podp_receipts:
+      - validation_framework_receipt
+      - algorithm_check_receipt
+      - compliance_report_receipt
+    implementation:
+      file: "tests/compliance/algorithm_validator.py"
+      class: "ComplianceValidator"
+      validates:
+        - "All 25 algorithms"
+        - "Mathematical correctness"
+        - "Parameter compliance"
+    estimated_hours: 12
+
+  - id: task-016
+    name: "Generate Compliance Report"
+    epsilon_budget: 0.001
+    dependencies: [task-015]
+    podp_receipts:
+      - report_generation_receipt
+      - signature_receipt
+    implementation:
+      file: "tests/compliance/compliance_report.py"
+      output:
+        - "HTML report"
+        - "JSON metrics"
+        - "PDF certificate"
+    estimated_hours: 4
+
+  - id: task-017
+    name: "Execute Full System Integration Test"
+    epsilon_budget: 0.005
+    dependencies: [task-015]
+    podp_receipts:
+      - integration_test_receipt
+      - performance_test_receipt
+      - security_test_receipt
+    implementation:
+      file: "tests/integration/full_system_test.py"
+      test_scenarios:
+        - "100k disputes simulation"
+        - "Multi-party FL training"
+        - "Byzantine attack resilience"
+        - "Privacy budget enforcement"
+    estimated_hours: 16
+
+# Phase 6: Production Deployment (Week 4)
+phase_6_deployment:
+  - id: task-018
+    name: "Deploy to Staging Environment"
+    epsilon_budget: 0.002
+    dependencies: [task-013, task-014, task-017]
+    podp_receipts:
+      - staging_deploy_receipt
+      - health_check_receipt
+      - smoke_test_receipt
+    implementation:
+      environment: "staging"
+      steps:
+        - "Database migration"
+        - "Service deployment"
+        - "Load balancer configuration"
+        - "SSL certificate setup"
+    estimated_hours: 8
+
+  - id: task-019
+    name: "Execute Load Testing"
+    epsilon_budget: 0.003
+    dependencies: [task-018]
+    podp_receipts:
+      - load_test_receipt
+      - performance_metrics_receipt
+      - bottleneck_analysis_receipt
+    implementation:
+      tool: "k6 or locust"
+      scenarios:
+        - "Ramp up to 100k disputes/day"
+        - "Sustained load for 24 hours"
+        - "Burst traffic simulation"
+    estimated_hours: 12
+
+  - id: task-020
+    name: "Production Deployment with Rollback"
+    epsilon_budget: 0.005
+    dependencies: [task-019]
+    podp_receipts:
+      - production_deploy_receipt
+      - verification_receipt
+      - rollback_plan_receipt
+    implementation:
+      deployment_strategy: "blue-green"
+      rollback_trigger:
+        - "Error rate > 1%"
+        - "P95 latency > SLO"
+        - "Privacy budget violation"
+    estimated_hours: 8
+
+# Budget Summary
+epsilon_budget_allocation:
+  total_allocated: 0.050  # Out of 4.0 total
+  breakdown:
+    algorithm_implementation: 0.010
+    protocol_enhancement: 0.014
+    performance_optimization: 0.003
+    production_configuration: 0.003
+    compliance_validation: 0.008
+    deployment: 0.010
+    buffer: 0.002
+
+# PoDP Receipt Chain
+podp_receipt_chain:
+  merkle_tree_structure:
+    root: "final_deployment_root"
+    branches:
+      - algorithms: [task-001, task-002, task-003, task-004]
+      - protocols: [task-005, task-006, task-007, task-008]
+      - performance: [task-009, task-010, task-011]
+      - production: [task-012, task-013, task-014]
+      - compliance: [task-015, task-016, task-017]
+      - deployment: [task-018, task-019, task-020]
+
+  blockchain_anchoring:
+    contract: "AnchorReceipts.sol"
+    network: "Ethereum Mainnet"
+    frequency: "After each phase completion"
+    gas_budget: 0.5 ETH
+
+# Critical Path Analysis
+critical_path:
+  - task-001  # Q-Learning (16h)
+  - task-002  # Q-Learning Integration (8h)
+  - task-007  # Secure Aggregation (12h)
+  - task-008  # Protocol Integration (8h)
+  - task-015  # Compliance Validation (12h)
+  - task-017  # Integration Test (16h)
+  - task-019  # Load Testing (12h)
+  - task-020  # Production Deployment (8h)
+  total_critical_path_hours: 92
+
+# Resource Allocation
+resources:
+  engineers:
+    ml_engineer:
+      tasks: [task-001, task-002, task-009, task-010]
+      hours: 48
+    security_engineer:
+      tasks: [task-003, task-004, task-005, task-006, task-007]
+      hours: 64
+    backend_engineer:
+      tasks: [task-008, task-011, task-015, task-016]
+      hours: 40
+    devops_engineer:
+      tasks: [task-012, task-013, task-014, task-018, task-019, task-020]
+      hours: 56
+    qa_engineer:
+      tasks: [task-017]
+      hours: 16
+
+# Success Metrics
+success_metrics:
+  technical:
+    - "All 25 algorithms implemented per spec"
+    - "Performance SLOs achieved"
+    - "Privacy budget enforced"
+    - "PoDP receipts for all operations"
+
+  compliance:
+    - "100% algorithm compliance"
+    - "Mathematical verification passed"
+    - "Security audit passed"
+    - "Blockchain anchoring operational"
+
+  operational:
+    - "100k disputes/day capacity"
+    - "99.9% uptime"
+    - "P95 latency < 600ms"
+    - "Zero security incidents"
+
+# Risk Mitigation
+risks:
+  high_priority:
+    - risk: "Q-learning convergence failure"
+      mitigation: "Fallback to epsilon-greedy"
+      owner: "ml_engineer"
+
+    - risk: "Secure aggregation overhead"
+      mitigation: "Optimize protocol, increase timeouts"
+      owner: "security_engineer"
+
+    - risk: "Production scaling issues"
+      mitigation: "Thorough load testing, auto-scaling"
+      owner: "devops_engineer"
+
+  medium_priority:
+    - risk: "Key rotation downtime"
+      mitigation: "Rolling updates, zero-downtime migration"
+      owner: "security_engineer"
+
+    - risk: "GPU compatibility"
+      mitigation: "CPU fallback already implemented"
+      owner: "ml_engineer"
+
+# Validation Checkpoints
+checkpoints:
+  week_1:
+    - "Q-Learning implemented and tested"
+    - "Key rotation automated"
+    - "PoDP receipts generated"
+
+  week_2:
+    - "Secure aggregation protocol complete"
+    - "GPU acceleration operational"
+    - "Performance benchmarks passing"
+
+  week_3:
+    - "Production configuration ready"
+    - "Kubernetes deployment tested"
+    - "Monitoring dashboards live"
+
+  week_4:
+    - "Compliance validation passed"
+    - "Load testing successful"
+    - "Production deployment complete"
+
+# Final Deliverables
+deliverables:
+  code:
+    - "Q-Learning optimizer implementation"
+    - "Automated key rotation system"
+    - "Real secure aggregation protocol"
+    - "GPU-accelerated search"
+    - "Performance benchmark suite"
+
+  documentation:
+    - "Algorithm compliance report"
+    - "Production deployment guide"
+    - "API documentation"
+    - "Operational runbook"
+
+  infrastructure:
+    - "Kubernetes manifests"
+    - "Monitoring configuration"
+    - "CI/CD pipeline"
+    - "Backup/restore procedures"
+
+# Completion Criteria
+completion_criteria:
+  - "All 25 algorithms implemented exactly per research specification"
+  - "100% PoDP compliance with receipts for all operations"
+  - "Epsilon budget enforced at ε=4.0"
+  - "Performance SLOs achieved (P95 < 600ms)"
+  - "Production deployment successful with zero incidents"
+  - "Compliance report shows 100% adherence"
+  - "All tests passing with >80% coverage"
+  - "Documentation complete and reviewed"

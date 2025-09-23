@@ -23,8 +23,8 @@ import uvicorn
 
 # Import generated gRPC code
 try:
-    from . import search_pb2
-    from . import search_pb2_grpc
+    from services.search import search_pb2
+    from services.search import search_pb2_grpc
 except ImportError:
     import sys
     import os
