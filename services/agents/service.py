@@ -17,11 +17,11 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 import uvicorn
 
-# Import agent components
-from agents.topology import WattsStrogatzNetwork
+# Import agent components - fixed to match actual class names
+from agents.topology import WattsStrogatzTopology
 from agents.gnn_predictor import GNNLatencyPredictor
-from agents.queue_model import M_M_1_Queue
-from agents.rewiring import EpsilonGreedyRewirer
+from agents.queue_model import MM1Queue
+from agents.rewiring import EpsilonGreedyRewiring
 from agents.orchestrator import SOANOrchestrator
 
 app = FastAPI(title="DALRN SOAN Service", version="1.0.0")
@@ -85,11 +85,14 @@ class NetworkManager:
         network_id = f"NET-{datetime.utcnow().timestamp():.0f}"
 
         # Create Watts-Strogatz topology
-        network = WattsStrogatzNetwork(
-            n=n_nodes,
+        network = WattsStrogatzTopology(
+            N=n_nodes,  # Fixed parameter name to match class definition
             k=k_edges,
             p=p_rewire
         )
+
+        # Generate the actual network graph
+        network.generate()
 
         # Initialize GNN predictor
         predictor = GNNLatencyPredictor(
@@ -101,7 +104,7 @@ class NetworkManager:
         # Initialize queues for each agent
         queues = {}
         for node_id in range(n_nodes):
-            queues[node_id] = M_M_1_Queue(
+            queues[node_id] = MM1Queue(
                 arrival_rate=np.random.uniform(0.5, 1.0),
                 service_rate=np.random.uniform(1.0, 2.0)
             )
@@ -118,8 +121,8 @@ class NetworkManager:
             "network_id": network_id,
             "num_nodes": n_nodes,
             "num_edges": network.graph.number_of_edges(),
-            "avg_shortest_path": metrics["avg_shortest_path"],
-            "clustering_coefficient": metrics["clustering_coefficient"]
+            "avg_shortest_path": metrics.get("average_path_length", 0),
+            "clustering_coefficient": metrics.get("clustering_coefficient", 0)
         }
 
     async def train_predictor(
@@ -185,7 +188,7 @@ class NetworkManager:
         network = self.networks[network_id]
 
         # Initialize rewirer
-        rewirer = EpsilonGreedyRewirer(epsilon=epsilon)
+        rewirer = EpsilonGreedyRewiring(epsilon=epsilon)
 
         # Track metrics
         metrics_history = []
